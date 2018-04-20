@@ -1,6 +1,6 @@
 module lang::webassembly::Syntax
 
-layout Layout = Space*;
+layout Layout = Space* !>> " " !>> [\t\n\r] !>> ";;" !>> "(;";
 
 // ### Syntax Format ###
 
@@ -12,22 +12,16 @@ lexical ValType = "i32" | "i64" | "f32" | "f64";
 
 syntax ResultType = Result?;
 
-// TODO: Validate vec(param)
-syntax FuncType = "(" "func" ( Param | AbbrParam )* Result ")"
-                | "(" "func" Param ")"
+syntax FuncType = "(" "func" Param* Result* ")"
                 ;
 
-syntax Param = "(" "param" Id? ValType ")"
-             | AbbrParam
+syntax Param = "(" "param" Id ValType ")"
+             | "(" "param" ValType* ")"
              ;
-             
-syntax AbbrParam = "(" "param" ValType* ")";
 
-syntax Result = "(" "result" ValType ")"
-              | AbbrResult
+syntax Result = "(" "result" Id ValType ")"
+              | "(" "result" ValType* ")"
               ;
-              
-syntax AbbrResult = "(" "result" ValType* ")";
 
 syntax Limits = U32 | U32 U32;
 
@@ -43,11 +37,10 @@ syntax GlobalType = ValType
                   
 // -- Instructions --
 
-syntax Instr = PlainInstr | BlockInstr | FoldedInstr;
-
-syntax Label = Id
-             |
+syntax Instr = PlainInstr | BlockInstr | FoldedInstr
              ;
+
+syntax Label = Id?;
 
 // TODO: Validate Id constraint
 syntax BlockInstr = "block" Label ResultType Instr* "end" Id?
@@ -102,9 +95,9 @@ syntax PlainInstr = "unreachable"
                   | "f32.convert_u/i64"
                   | "f32.demote/f64"
                   | "f64.convert_s/i32"
-                  | "f64_convert_u/i32"
+                  | "f64.convert_u/i32"
                   | "f64.convert_s/i64"
-                  | "f64_convert_u/i64"
+                  | "f64.convert_u/i64"
                   | "f64.promote/f32"
                   | "i32.reinterpret/f32"
                   | "i64.reinterpret/f64"
@@ -129,7 +122,7 @@ lexical TableIdx = U32 | Id;
 lexical MemIdx = U32 | Id;
 lexical GlobalIdx = U32 | Id;
 lexical LocalIdx = U32 | Id;
-lexical LabelId = U32 | Id;
+lexical LabelIdx = U32 | Id;
 
 lexical Offset = "offset=" U32
                |
@@ -211,55 +204,65 @@ lexical FxxInstr = Fxx ".abs"
 
 syntax Type = "(" "type" Id? FuncType ")";
 
-syntax TypeUse = "(" "type" TypeIdx ")"
-               | "(" "type" TypeIdx ")" Param* Result*
+// TypeUse is optional under the condition that it is entirely replaced by inline parameter and result declarations
+syntax TypeUse = "(" "type" TypeIdx ")" Param* Result*
                | Param* Result*
                ;
 
 syntax Import = "(" "import" Name Name ImportDesc ")";
 
-syntax ImportDesc = "(" "func" Id? TypeUse ")"
+syntax ImportDesc = "(" "func" Id? TypeUse ")" // TODO: Check TypeUse
                   | "(" "table" Id? TableType ")"
                   | "(" "memory" Id? MemType ")"
                   | "(" "global" Id? GlobalType ")"
                   ;
                   
-syntax Func = "(" "func" Id? TypeUse Local* Instr* ")"
-            | "(" "func" Id? "(" "import" Name Name ")" TypeUser ")"
-            //| "(" "func" Id? ( "(" "export" Name ")" )* ")" // Not sure what this one is supposed to do. TODO: Fix
-            ;
+// A function can have zero or more inline exports, followed by zero or one inline import
+// A function with an inline import has no body
+syntax Func = "(" "func" Id? FuncFields ")";
 
-syntax Local = "(" "local" Id? ValType ")"
-             | AbbrLocal
+syntax FuncFields = InlineExport FuncFields
+                  | InlineImport TypeUse
+                  | TypeUse FuncFieldsBody
+                  ;
+
+syntax FuncFieldsBody = FuncBody;
+
+syntax FuncBody = Local* Instr*;
+
+syntax InlineImport = "(" "import" Name Name ")";
+
+syntax InlineExport = "(" "export" Name ")";
+
+syntax Local = "(" "local" Id ValType ")"
+             | "(" "local" ValType* ")"
              ;
 
-syntax AbbrLocal = "(" "local" ValType* ")";
+syntax Table = "(" "table" Id? TableFields ")";
 
-syntax Table = "(" "table" Id? TableType ")";
-
-syntax AbbrTable = "(" "table" Id? ElemType "(" "elem" FuncIdx* ")" ")"
-                 | "(" "table" Id "(" "import" Name Name ")" TableType ")"
-                 //| "(" "table" Id? "(" "export" Name ")" // Not sure what this one is supposed to do. TODO: Fix
-                 ;
+syntax TableFields = InlineImport? TableType
+                   | InlineExport TableFields
+                   // From the grammar it is unclear whether an inline element can occur
+                   // together with an inline import. According to the reference parser, it cannot.
+                   | ElemType InlineElem
+                   ;
                  
-syntax Mem = "(" "memory" Id? MemType ")"
-           | AbbrMem
-           ;
+syntax Mem = "(" "memory" Id? MemFields ")";
 
-syntax AbbrMem = "(" "memory" Id? "(" DataString ")" ")"
-               | "(" "memory" Id? "(" "import" Name Name ")" MemType ")"
-               //| "(" "memory" Id? "(" "export" Name ")" ")" // Not sure what this one is supposed to do. TODO: Fix
-               ;
+syntax MemFields = InlineExport MemFields
+                 | "(" "data" DataString ")"
+                 | InlineImport? MemType
+                 ;
 
-syntax Global = "(" "global" Id? GlobalType Expr ")"
-              | AbbrGlobal
+syntax Global = "(" "global" Id? GlobalFields ")"
               ;
               
-syntax AbbrGlobal = "(" "global" Id? "(" "import" Name Name ")" GlobalType ")"
-                  //| // Another one. Not sure what this one is supposed to do. TODO: Fix
-                  ;
+syntax GlobalFields = InlineExport GlobalFields
+                    | GlobalType Expr
+                    | InlineImport GlobalType
+                    ;
                   
-syntax Export = "(" "export" Name ExporDesc ")";
+syntax Export = "(" "export" Name ExportDesc ")";
 
 syntax ExportDesc = "(" "func" FuncIdx ")"
                   | "(" "table" TableIdx ")"
@@ -269,22 +272,24 @@ syntax ExportDesc = "(" "func" FuncIdx ")"
                   
 syntax Start = "(" "start" FuncIdx ")";
 
-syntax Elem = "(" "elem" TableIdx? "(" "offset" Expr ")" FuncIdx* ")"
-            | AbbrElem
-            ;
-            
-syntax AbbrElem = "(" "elem" TableIdx? Instr FuncIdx* ")"; // TODO: Verify this
+syntax InlineElem = "(" "elem" FuncIdx* ")";
 
-syntax Data = "(" "data" MemIdx? "(" "offset" Expr ")" DataString ")"
-            | AbbrData
+syntax Elem = "(" "elem" TableIdx? ElemFields ")";
+            
+syntax ElemFields = "(" "offset" Expr ")" FuncIdx*
+                  | Instr FuncIdx*
+                  ;
+
+syntax Data = "(" "data" MemIdx? DataFields ")"
             ;
             
-syntax AbbrData = "(" "data" MemIdx? Instr FuncIdx* ")"; // TODO: Verify this
+syntax DataFields = "(" "offset" Expr ")" DataString
+                  | Instr DataString
+                  ;
 
 syntax DataString = String*;
 
-syntax Module = "(" "module" Id ModuleField* ")"
-              | "(" "module" ModuleField* ")";
+syntax Module = "(" "module" Id? ModuleField* ")";
 
 syntax ModuleField = Type
                    | Import
@@ -295,27 +300,15 @@ syntax ModuleField = Type
                    | Export
                    | Start
                    | Elem
-                   | Data;
+                   | Data
+                   ;
                  
 // ### Lexical Format ###
 
-lexical Char = [ \u0000-\uD7FF \uE000-\u10FFFF ];
-
-lexical Token = Keyword !>> [a-z $]
-              | UN
-              | SN
-              | FN
-              | String
-              | Id
-              | "("
-              | ")"
-              ;
-
-lexical Keyword = "pineapple"; // TODO
-
 lexical Space = " "
               | Format
-              | Comment;
+              | Comment
+              ;
               
 lexical Format = [\t\n\r];
 
@@ -324,14 +317,14 @@ lexical Comment = LineComment
                 ;
                 
 lexical LineComment = ";;" LineChar* "\n"
-                    | ";;" LineChar* $
+                    | ";;" LineChar* $ !>> "\n" // A newline should be consumed, as per the first case
                     ;
 
-lexical LineChar = Char \ "\n";
+lexical LineChar = [ \u0000-\uD7FF \uE000-\u10FFFF ] - [ \n ];
 
 lexical BlockComment = "(;" BlockChar* ";)";
 
-lexical BlockChar = Char \ (";" | "(")
+lexical BlockChar = [ \u0000-\uD7FF \uE000-\u10FFFF ] - [ ; ( ]
                   | ";" !>> ")"
                   | "(" !>> ";"
                   | BlockComment
@@ -347,25 +340,29 @@ lexical Digit = [0-9];
 
 lexical HexDigit = Digit | [a-fA-F];
 
-lexical Num = Digit
-            | Num "_"? Digit
-            ;
+lexical NumDigits = Digit
+                  | NumDigits "_"? Digit
+                  ;
+                  
+lexical Num = NumDigits !>> [0-9];
 
-lexical HexNum = HexDigit
-               | HexNum "_"? HexDigit
-               ;
+lexical HexNumDigits = HexDigit
+                     | HexNumDigits "_"? HexDigit
+                     ;
+                     
+lexical HexNum = HexNumDigits !>> [ 0-9 a-f A-F ];
 
 // TODO: Satisfy 'n < 2^N'
-lexical UN = Num !>> [0-9]
-           | "0x" HexNum !>> [a-fA-F0-9]
+lexical UN = Num
+           | "0x" HexNum
            ;
 
 // TODO: Satisfy '-2^(N-1) <= n < 2^(N-1)'
-lexical SN = Sign Num !>> [0-9]
-           | Sign "0x" HexNum !>> [a-fA-F0-9]
+lexical SN = Sign Num
+           | Sign "0x" HexNum
            ;
            
-lexical IN = UN | SN; // TODO: Remove?
+lexical IN = SN;
 
 lexical U32 = UN;
 lexical U64 = UN;
@@ -374,18 +371,18 @@ lexical S64 = SN;
 lexical I32 = IN;
 lexical I64 = IN;
 
-lexical Frac = Digit Frac
-             | Digit "_" Digit Frac
+// Modified
+lexical Frac = Digit ( "_"? Digit )*
              |
              ;
-             
-lexical HexFrac = HexDigit HexFrac
-                | HexDigit "_" HexDigit HexFrac
+
+// Modified
+lexical HexFrac = HexDigit ( "_"? HexDigit )*
                 |
                 ;
-                
+
 lexical Float = Num "." Frac
-              | Num [Ee] PMSign Num
+              | Num [Ee] Sign Num
               | Num "." Frac [Ee] Sign Num
               ;
 
@@ -394,7 +391,11 @@ lexical HexFloat = "0x" HexNum "." HexFrac
                  | "0x" HexNum "." HexFrac [Pp] Sign Num
                  ;
                  
-lexical FN = Sign FNMag;
+lexical FN = Sign FNMag
+           // Not part of official syntax specification. Integer values do, apparently, not count as floats
+           // However, the test suite has them like that.
+           | SN
+           ;
 
 lexical FNMag = Float
               | HexFloat
@@ -411,16 +412,18 @@ lexical String = "\"" StringElem* "\"";
 lexical StringElem = StringChar
                    | "\\" HexDigit HexDigit
                    ;
-                   
-lexical StringChar = Char \ [\u0000-\u0019 \u007F \" \']
-                   | [\t\n\r\"\'\\]
+
+lexical StringChar = [ \u0020-\uD7FF \uE000-\u10FFFF ] - [ \" \\ \u007F ]
+                   | "\\" EscapableChar
                    | "\\u" HexNum
                    ;
                    
+lexical EscapableChar = [ t n r \" \' \\ ];
+                   
 lexical Name = String; // TODO: Look at (must be valid UTF-8)
 
-lexical Id = "$" IdChar+ !>> [ 0-9 a-z A-Z ]; //[0-9 A-Z a-z !#$%&\'*+\-./:\<=\>?@\\^_`|~]
+lexical Id = "$" IdChar+ !>> [0-9 A-Z a-z !#$%&\'*+\-./:\<=\>?@\\^_`|~];
 
 // Any printable ASCII character that does not contain a space, quotation mark, comma, semicolon, or bracket
-lexical IdChar = [ 0-9 a-z A-Z ]; //[0-9 A-Z a-z !#$%&\'*+\-./:\<=\>?@\\^_`|~]
+lexical IdChar = [0-9 A-Z a-z !#$%&\'*+\-./:\<=\>?@\\^_`|~];
 
