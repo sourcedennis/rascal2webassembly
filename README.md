@@ -1,6 +1,15 @@
 # rascal2webassembly
 A WebAssembly API written in Rascal MPL.
 
+## Setup
+
+### Setup test suite
+Pull the test suite from the repo at <https://github.com/WebAssembly/testsuite>. The WebAssembly files in this repo seem to be using a different syntax for the memory grow and size instructions, than the syntax specification is. For now, change all occurrences of `grow_memory` to `memory.grow`, and all occurrences of `current_memory` to `memory.size`.
+
+There is some discussion regarding these changes to the instruction syntax in the WebAssembly spec repo. This will be properly updated in this repository later.
+
+Note that only 70 out of 72 can be properly parsed, as there currently are some issues w.r.t. proper Unicode parsing.
+
 ## WebAssembly
 See <https://github.com/webassembly>
 
@@ -36,7 +45,7 @@ Implemented features are prefixed with a :heavy_check_mark:.
   (Chapters 2, 4, 5)
 
 ### Unrelated
-These are papers related to a limited extend.
+These are papers related to a limited extent.
 * Donovan, A., Muth, R., Chen, B. Sehr, D. (2000). *PNaCl: Portable Native Client Executables*\
   Described a preceding technology by Google. Deprecated in favor of WebAssembly.
 * Zakai, A. (2013). *Emscripten: An LLVM-to-JavaScript Compiler*\
