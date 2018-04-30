@@ -12,8 +12,15 @@ lexical ValType = "i32" | "i64" | "f32" | "f64";
 
 syntax ResultType = Result?;
 
-syntax FuncType = "(" "func" Param* Result* ")"
-                ;
+syntax FuncType = "(" "func" Params Results ")";
+
+syntax Params = Param Params
+              |
+              ;
+
+syntax Results = Result Results
+               |
+               ;
 
 syntax Param = "(" "param" Id ValType ")"
              | "(" "param" ValType* ")"
@@ -39,6 +46,10 @@ syntax GlobalType = ValType
 
 syntax Instr = PlainInstr | BlockInstr | FoldedInstr
              ;
+
+syntax Instrs = Instr Instrs
+              |
+              ;
 
 syntax Label = Id?;
 
@@ -105,16 +116,20 @@ syntax PlainInstr = "unreachable"
                   | "f64.reinterpret/i64"
                   ;
 
-syntax FoldedInstr = "(" PlainInstr FoldedInstr* ")"
-                   | "(" "block" Label ResultType Instr* ")"
-                   | "(" "loop" Label ResultType Instr* ")"
-                   | "(" "if" Label ResultType FoldedInstr* "(" "then" Instr* ")" "(" "else" Instr* ")" ")"
-                   | "(" "if" Label ResultType FoldedInstr* "(" "then" Instr* ")" ")" // TODO: Verify this one
+syntax FoldedInstr = "(" PlainInstr FoldedInstrs ")"
+                   | "(" "block" Label ResultType Instrs ")"
+                   | "(" "loop" Label ResultType Instrs ")"
+                   | "(" "if" Label ResultType FoldedInstrs "(" "then" Instrs ")" "(" "else" Instrs ")" ")"
+                   | "(" "if" Label ResultType FoldedInstrs "(" "then" Instrs ")" ")" // TODO: Verify this one
                    ;
 
-syntax MemArg = Offset Align;
+syntax FoldedInstrs = FoldedInstr FoldedInstrs
+                    |
+                    ;
 
-syntax Expr = Instr*;
+syntax MemArg = Offset? Align?;
+
+syntax Expr = Instrs;
 
 lexical TypeIdx = U32 | Id;
 lexical FuncIdx = U32 | Id;
@@ -124,13 +139,9 @@ lexical GlobalIdx = U32 | Id;
 lexical LocalIdx = U32 | Id;
 lexical LabelIdx = U32 | Id;
 
-lexical Offset = "offset=" U32
-               |
-               ;
+lexical Offset = "offset=" U32;
               
-lexical Align = "align=" U32
-              |
-              ;
+lexical Align = "align=" U32;
 
 lexical Ixx = "i" ("32" | "64");
 
@@ -205,8 +216,8 @@ lexical FxxInstr = Fxx ".abs"
 syntax Type = "(" "type" Id? FuncType ")";
 
 // TypeUse is optional under the condition that it is entirely replaced by inline parameter and result declarations
-syntax TypeUse = "(" "type" TypeIdx ")" Param* Result*
-               | Param* Result*
+syntax TypeUse = "(" "type" TypeIdx ")" Params Results
+               | Params Results
                ;
 
 syntax Import = "(" "import" Name Name ImportDesc ")";
@@ -228,7 +239,7 @@ syntax FuncFields = InlineExport FuncFields
 
 syntax FuncFieldsBody = FuncBody;
 
-syntax FuncBody = Local* Instr*;
+syntax FuncBody = Locals Instr*;
 
 syntax InlineImport = "(" "import" Name Name ")";
 
@@ -237,6 +248,10 @@ syntax InlineExport = "(" "export" Name ")";
 syntax Local = "(" "local" Id ValType ")"
              | "(" "local" ValType* ")"
              ;
+
+syntax Locals = Local Locals
+              |
+              ;
 
 syntax Table = "(" "table" Id? TableFields ")";
 
@@ -289,7 +304,11 @@ syntax DataFields = "(" "offset" Expr ")" DataString
 
 syntax DataString = String*;
 
-syntax Module = "(" "module" Id? ModuleField* ")";
+syntax Module = "(" "module" Id? ModuleFields ")";
+
+syntax ModuleFields = ModuleField ModuleFields
+                    |
+                    ;
 
 syntax ModuleField = Type
                    | Import
@@ -426,4 +445,3 @@ lexical Id = "$" IdChar+ !>> [0-9 A-Z a-z !#$%&\'*+\-./:\<=\>?@\\^_`|~];
 
 // Any printable ASCII character that does not contain a space, quotation mark, comma, semicolon, or bracket
 lexical IdChar = [0-9 A-Z a-z !#$%&\'*+\-./:\<=\>?@\\^_`|~];
-
