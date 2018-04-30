@@ -6,6 +6,9 @@ import ParseTree;
 import util::FileSystem;
 import lang::webassembly::Syntax;
 import lang::webassembly::ScriptSyntax;
+import lang::webassembly::ADT;
+import lang::webassembly::ConvertADT;
+import lang::webassembly::Desugar;
 
 start[WebAssembly] parseWasm( str s ) = parse( #start[WebAssembly], s );
 start[WebAssemblyScript] parseWasmScript( loc l ) = parse( #start[WebAssemblyScript], l );
@@ -23,6 +26,34 @@ void main( ) {
   
   set[loc] unsuccessfulFiles = { l | loc l <- fileParseStatus, !fileParseStatus[l] };
   println( unsuccessfulFiles );
+}
+
+void mainSmall( ) {
+  loc f = |project://testsuite/skip-stack-guard-page.wast|;
+  
+  println( f );
+  bool isOk = tryParseWasmScript( f );
+  println( isOk );
+}
+
+void main2( ) {
+  start[WebAssembly] t = parse( #start[WebAssembly],
+                   "( module
+                   '    (func (export \"good3\") (import \"module\" \"function\" ) (param $t1 i32) (result i32) )
+                   '    (func (export \"good1\") (export \"good5\") (param $i i32) (param i32 i64) (result i32) (local i32)
+                   '        (i32.load8_u offset=0 (get_local $i))  ;; 97 \'a\'
+                   '    )
+                   ')" );
+  
+  println( t );
+  
+  start[WebAssembly] t2 = desugar( t );
+  
+  println( t2 );
+  
+  MODULE adt = toADT( t2 );
+  
+  println( adt );
 }
 
 bool tryParse( void( ) func ) {
