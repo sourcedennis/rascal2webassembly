@@ -3,6 +3,8 @@ module lang::webassembly::Desugar
 import lang::webassembly::Syntax;
 import ParseTree;
 import IO; // temp
+import List;
+import util::Math;
 
 // Many of the desugaring clauses cannot be resolved with the visit structure
 //   as in many cases a sub-ADT has to be replaced by a sub-ADT of a different
@@ -16,21 +18,31 @@ start[WebAssembly] desugar( start[WebAssembly] w ) =
     list[TypeDesc] initialTypes = getFuncTypes( m );
     <moduleDesc(finalTypes,_), m2> = desugar( moduleDesc( initialTypes, occurringIds( w ) ), m );
     list[TypeDesc] newTypes = finalTypes - initialTypes;
-    m3 = appendTypes( m2, newTypes );
-    insert m3;
+    insert appendTypes( m2, newTypes );
   }
   };
 
+Type toSyntaxField( typeDesc( list[ValType] paramValTypes, list[ValType] resultValTypes ) )
+  = (Type)`(type <FuncType funcType>)`
+  when params := [ (Param)`(param <ValType v>)` | v <- paramValTypes ],
+       results := [ (Result)`(result <ValType v>)` | v <- resultValTypes ],
+       funcType := addResults( addParams( (FuncType)`(func)`, params ), results );
+  
+Module appendTypes( m:(Module)`(module <Id? id> <ModuleField* fields>)`, [] ) = m;
+Module appendTypes( (Module)`(module <Id? id> <ModuleField* fields>)`, list[TypeDesc] types )
+  = appendTypes( (Module)`(module <Id? id> <ModuleField* fields> <Type tField>)`, tail( types ) )
+  when tField := toSyntaxField( head( types ) );
+  
 // ## ValTypeDescs
 // For these functions the Params/Results must already be desugared
 
-list[ValType] getTypes( (Params)`(param <Id _> <ValType valType>) <Params params>` ) = valType + getTypes( params );
-list[ValType] getTypes( (Params)`(param <ValType valType>) <Params params>` ) = valType + getTypes( params );
-list[ValType] getTypes( (Params)`` ) = [];
+ValType getType( (Param)`(param <Id _> <ValType t>)` ) = t;
+ValType getType( (Param)`(param <ValType t>)` ) = t;
+ValType getType( (Result)`(result <Id _> <ValType t>)` ) = t;
+ValType getType( (Result)`(result <ValType t>)` ) = t;
 
-list[ValType] getTypes( (Results)`(result <Id _> <ValType valType>) <Results results>` ) = valType + getTypes( results );
-list[ValType] getTypes( (Results)`(result <ValType valType>) <Results results>` ) = valType + getTypes( results );
-list[ValType] getTypes( (Results)`` ) = [];
+list[ValType] getTypes( list[Param] params ) = [ getType( p ) | p <- params ];
+list[ValType] getTypes( list[Result] results ) = [ getType( p ) | p <- results ];
 
 // These datatypes are introduced to avoid functions having side-effects
 // Instead, these are immutable "models" that may are brought into the
@@ -38,162 +50,243 @@ list[ValType] getTypes( (Results)`` ) = [];
 data TypeDesc = typeDesc( list[ValType] params, list[ValType] results );
 data ModuleDesc = moduleDesc( list[TypeDesc] types, set[str] ids );
 
-ModuleFields concat( (ModuleFields)``, ModuleFields fields2 ) = fields2;
-ModuleFields concat( (ModuleFields)`<ModuleField f> <ModuleFields fields>`, ModuleFields fields2 )
-  = (ModuleFields)`<ModuleField f> <ModuleFields concatFields>`
-  when concatFields := concat( fields, fields2 );
-  
-Params concat( (Params)``, Params fields2 ) = fields2;
-Params concat( (Params)`<Param f> <Params fields>`, Params fields2 )
-  = (Params)`<Param f> <Params concatFields>`
-  when concatFields := concat( fields, fields2 );
-  
-Results concat( (Results)``, Results fields2 ) = fields2;
-Results concat( (Results)`<Result f> <Results fields>`, Results fields2 )
-  = (Results)`<Result f> <Results concatFields>`
-  when concatFields := concat( fields, fields2 );
-  
-Locals concat( (Locals)``, Locals fields2 ) = fields2;
-Locals concat( (Locals)`<Local f> <Locals fields>`, Locals fields2 )
-  = (Locals)`<Local f> <Locals concatLocals>`
-  when concatLocals := concat( fields, fields2 );
-  
-Instrs concat( (Instrs)``, Instrs fields2 ) = fields2;
-Instrs concat( (Instrs)`<Instr f> <Instrs fields>`, Instrs fields2 )
-  = (Instrs)`<Instr f> <Instrs concatLocals>`
-  when concatLocals := concat( fields, fields2 );
+tuple[ModuleDesc,Module] desugar( ModuleDesc desc, m:(Module)`(module <Id? id>)` ) = <desc,m>;
+tuple[ModuleDesc,Module] desugar( ModuleDesc desc, (Module)`(module <Id? id> <ModuleField field> <ModuleField* fields>)` )
+  = <desc3, prependFields( moduleDesFields, desField )>
+  when <desc2, desField> := desugar( desc, field ),
+       <desc3, moduleDesFields> := desugar( desc2, (Module)`(module <Id? id> <ModuleField* fields>)` );
 
-// Param
-Params desugar( p:(Param)`(param <Id id> <ValType \type>)` ) = (Params)`<Param p>`;
-Params desugar( (Param)`(param)` ) = (Params)``;
-Params desugar( (Param)`(param <ValType \type> <ValType* types>)` )
-  = (Params)`(param <ValType \type>) <Params desParams>`
-  when desParams := desugar( (Param)`(param <ValType* types>)` );
-Params desugar( (Params)`<Param p> <Params ps>` )
-  = (Params)`<Params concatPs>`
-  when desP := desugar( p ),
-       desPs := desugar( ps ),
-       concatPs := concat( desP, desPs );
-Params desugar( p:(Params)`` ) = p;
-
-// Result (copy of Param)
-Results desugar( p:(Result)`(result <Id id> <ValType \type>)` ) = (Results)`<Result p>`;
-Results desugar( (Result)`(result)` ) = (Results)``;
-Results desugar( (Result)`(result <ValType \type> <ValType* types>)` )
-  = (Results)`(result <ValType \type>) <Results desResults>`
-  when desResults := desugar( (Result)`(result <ValType* types>)` );
-Results desugar( (Results)`<Result p> <Results ps>` )
-  = (Results)`<Results concatPs>`
-  when desP := desugar( p ),
-       desPs := desugar( ps ),
-       concatPs := concat( desP, desPs );
-Results desugar( p:(Results)`` ) = p;
-
-// Local (copy of Param)
-Locals desugar( l:(Local)`(local <Id id> <ValType \type>)` ) = (Locals)`<Local l>`;
-Locals desugar( (Local)`(local)` ) = (Locals)``;
-Locals desugar( (Local)`(local <ValType \type> <ValType* types>)` )
-  = (Locals)`(local <ValType \type>) <Locals desResults>`
-  when desResults := desugar( (Local)`(local <ValType* types>)` );
-Locals desugar( (Locals)`<Local p> <Locals ps>` )
-  = (Locals)`<Locals concatPs>`
-  when desP := desugar( p ),
-       desPs := desugar( ps ),
-       concatPs := concat( desP, desPs );
-Locals desugar( p:(Locals)`` ) = p;
-
-// Type Use
-tuple[ModuleDesc,TypeUse] desugar( ModuleDesc desc, (TypeUse)`(type <TypeIdx idx>) <Params ps> <Results rs>` )
-  = <desc, (TypeUse)`(type <TypeIdx idx>) <Params desPs> <Results desRs>`>
-  when desPs := desugar( ps ),
-       resPs := desugar( rs );
-
-tuple[ModuleDesc,TypeUse] desugar( ModuleDesc desc, (TypeUse)`<Params ps> <Results rs>` )
-  = <desc2, (TypeUse)`(type <UN idLex>) <Params desPs> <Results desRs>`>
-  when desPs := desugar( ps ),
-       desRs := desugar( rs ),
-       <desc2, id> := findTypeIndex( desc, desPs, desRs ),
-       idLex := parse( #UN, "<id>" );
-
-// Functions (from Section 6.6.5)
+// ## Functions (from Section 6.6.5)
 //
 // Note that for these functions the desugaring is not done on the FuncFields
 //   themselves, as the Id must be known, and a single function module field can
 //   be an abbreviation for several module fields
-tuple[ModuleDesc,ModuleFields] desugar( ModuleDesc desc, (ModuleField)`(func <Id? id> <TypeUse typeUse> <Locals locals> <Instrs instrs>)` )
-  = <desc2, (ModuleFields)`(func <Id? id> <TypeUse desTypeUse> <Locals desLocals> <Instrs desInstrs>)`>
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(func <Id? id> <TypeUse typeUse> <FuncBody body>)` )
+  = <desc2, [ (ModuleField)`(func <Id? id> <TypeUse desTypeUse> <FuncBody desBody>)` ]>
   when <desc2,desTypeUse> := desugar( desc, typeUse ),
-       desLocals := desugar( locals ),
-       desInstrs := desugar( instrs );
+       desBody := desugar( body );
 
-tuple[ModuleDesc,ModuleFields] desugar( ModuleDesc desc, (ModuleField)`(func <Id? id> (import <Name modName> <Name funcName>) <TypeUse typeUse>)` )
-  = <desc2, (ModuleFields)`(import <Name modName> <Name funcName> (func <Id? id> <TypeUse desTypeUse>))`>
-  when <desc2,desTypeUse> := desugar( desc, typeUse );
-
-tuple[ModuleDesc,ModuleFields] desugar( ModuleDesc desc, (ModuleField)`(func (export <Name name>) <FuncFields fields>)` )
-  = <desc3, (ModuleFields)`(export <Name name> (func <FuncIdx id>)) <ModuleFields desFields>`>
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(func (export <Name name>) <FuncFields fields>)` )
+  = <desc3, (ModuleField)`(export <Name name> (func <FuncIdx id>))` + desFields>
   when <desc2,id> := getFreshId( desc ),
        <desc3,desFields> := desugar( desc2, (ModuleField)`(func <Id id> <FuncFields fields>)` );
   
-tuple[ModuleDesc,ModuleFields] desugar( ModuleDesc desc, (ModuleField)`(func <Id id> (export <Name name>) <FuncFields fields>)` )
-  = <desc2, (ModuleFields)`(export <Name name> (func <FuncIdx id>)) <ModuleFields desugaredFields>`>
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(func <Id id> (export <Name name>) <FuncFields fields>)` )
+  = <desc2, (ModuleField)`(export <Name name> (func <FuncIdx id>))` + desugaredFields>
   when <desc2, desugaredFields> := desugar( desc, (ModuleField)`(func <Id id> <FuncFields fields>)` );
 
-// Instrs
-Instrs desugar( (Instr)`<FoldedInstr instr>` ) = desugar( instr );
-Instrs desugar( (Instr)`<PlainInstr plainInstr>` ) = desugar( plainInstr );
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(func <Id? id> (import <Name modName> <Name funcName>) <TypeUse typeUse>)` )
+  = <desc2, [ (ModuleField)`(import <Name modName> <Name funcName> (func <Id? id> <TypeUse desTypeUse>))` ]>
+  when <desc2,desTypeUse> := desugar( desc, typeUse );
 
-Instrs desugar( (Instrs)`<Instr instr> <Instrs instrs>` ) = concat( desugar( instr ), desugar( instrs ) );
-Instrs desugar( i:(Instrs)`` ) = i;
-
-Instrs desugar( (FoldedInstrs)`<FoldedInstr foldInstr> <FoldedInstrs foldInstrs>` ) = concat( desugar( foldInstr ), desugar( foldInstrs ) );
-Instrs desugar( f:(FoldedInstrs)`` ) = (Instrs)``;
-
-Instrs desugar( (FoldedInstr)`(<PlainInstr plainInstr> <FoldedInstrs foldInstrs>)` ) = concat( desugar( foldInstrs ), (Instrs)`<PlainInstr plainInstr>` );
-
-default Instrs desugar( Instr instr ) = (Instrs)`<Instr instr>`;
-
-// ModuleFields
-default tuple[ModuleDesc,ModuleFields] desugar( ModuleDesc desc, ModuleField field ) = <desc, (ModuleFields)`<ModuleField field>`>;
-
-tuple[ModuleDesc,ModuleFields] desugar( ModuleDesc desc, m:(ModuleFields)`` ) = <desc,m>;
-
-tuple[ModuleDesc,ModuleFields] desugar( ModuleDesc desc, (ModuleFields)`<ModuleField field> <ModuleFields fields>` )
-  = < desc3, concat( desField, desFields ) >
-  when <desc2,desField> := desugar( desc, field ),
-       <desc3,desFields> := desugar( desc2, fields );
-
-tuple[ModuleDesc,Module] desugar( ModuleDesc desc, (Module)`(module <Id? id> <ModuleFields fields>)` )
-  = <desc2,(Module)`(module <Id? id> <ModuleFields desFields>)`>
-  when <desc2,desFields> := desugar( desc, fields );
-
-// ## Add the new type fields to the end of the module
-Params toSyntaxParams( [] ) = (Params)``;
-Params toSyntaxParams( list[ValType] params )
-  = (Params)`(param <ValType valType>) <Params sParams>`
-  when sParams := toSyntaxParams( tail( params ) ),
-       valType := head( params );
+FuncBody desugar( (FuncBody)`<Local* locals> <Instr* instrs>` )
+  = addInstrs( addLocals( (FuncBody)``, desLocals ), desInstrs )
+  when desLocals := [ x | l <- locals, x <- desugar( l ) ],
+       desInstrs := [ x | i <- instrs, x <- desugar( i ) ];
        
-Results toSyntaxResults( [] ) = (Results)``;
-Results toSyntaxResults( list[ValType] results )
-  = (Results)`(result <ValType valType>) <Results sResults>`
-  when sResults := toSyntaxResults( tail( results ) ),
-       valType := head( results );
-       
-Type toSyntaxField( typeDesc( list[ValType] params, list[ValType] results ) ) = (Type)`(type (func <Params sParams> <Results sResults>))`
-  when sParams := toSyntaxParams( params ),
-       sResults := toSyntaxResults( results );
-       
-ModuleFields toSyntaxFields( [] ) = (ModuleFields)``;
-ModuleFields toSyntaxFields( list[TypeDesc] types ) {
-  sField = toSyntaxField( head( types ) );
-  sFields = toSyntaxFields( tail( types ) );
-  return (ModuleFields)`<Type sField> <ModuleFields sFields>`;
+// Instr
+list[Instr] desugar( (Instr)`<FoldedInstr foldInstr>` ) = desugar( foldInstr );
+list[Instr] desugar( (Instr)`<PlainInstr plainInstr>` ) = desugar( plainInstr );
+
+list[Instr] desugar( PlainInstr i ) = [(Instr)`<PlainInstr i>`];
+list[Instr] desugar( (FoldedInstr)`(<PlainInstr plainInstr> <FoldedInstr* foldInstrs>)` ) = [ x | f <- foldInstrs, x <- desugar( f ) ] + [ (Instr)`<PlainInstr plainInstr>` ];
+list[Instr] desugar( (FoldedInstr)`(block <Label l> <ResultType t> <Instr* instrs>)` ) = [ addInstrs( (Instr)`block <Label l> <ResultType t> end`, [ x | i <- instrs, x <- desugar( i ) ] ) ];
+list[Instr] desugar( (FoldedInstr)`(loop <Label l> <ResultType t> <Instr* instrs>)` ) = [ addInstrs( (Instr)`loop <Label l> <ResultType t> end`, [ x | i <- instrs, x <- desugar( i ) ] ) ];
+
+list[Instr] desugar( (FoldedInstr)`(if <Label l> <ResultType t> <FoldedInstr condInstr> <FoldedInstr* condInstrs> (then <Instr* thenInstrs>) (else <Instr* elseInstrs>))` )
+  = desugar( condInstr ) + desugar( (FoldedInstr)`(if <Label l> <ResultType t> <FoldedInstr* condInstrs> (then <Instr* thenInstrs>) (else <Instr* elseInstrs>))` );
+list[Instr] desugar( (FoldedInstr)`(if <Label l> <ResultType t> <FoldedInstr condInstr> <FoldedInstr* condInstrs> (then <Instr* thenInstrs>))` )
+  = desugar( condInstr ) + desugar( (FoldedInstr)`(if <Label l> <ResultType t> <FoldedInstr* condInstrs> (then <Instr* thenInstrs>))` );
+list[Instr] desugar( (FoldedInstr)`(if <Label l> <ResultType t> (then <Instr* thenInstrs>))` )
+  = [ addThenInstrs( (Instr)`if <Label l> <ResultType t> end`, desThenInstr ) ]
+  when desThenInstr := [ x | i <- thenInstrs, x <- desugar( i ) ];
+list[Instr] desugar( (FoldedInstr)`(if <Label l> <ResultType t> (then <Instr* thenInstrs>) (else <Instr* elseInstrs>))` )
+  = [ addElseInstrs( addThenInstrs( (Instr)`if <Label l> <ResultType t> else end`, desThenInstr ), desElseInstr ) ]
+  when desThenInstr := [ x | i <- thenInstrs, x <- desugar( i ) ],
+       desElseInstr := [ x | i <- elseInstrs, x <- desugar( i ) ];
+
+Instr addInstrs( b:(Instr)`block <Label l> <ResultType t> <Instr* instrs> end`, [] ) = b;
+Instr addInstrs( (Instr)`block <Label l> <ResultType t> <Instr* instrs> end`, list[Instr] newInstrs )
+  = addInstrs( (Instr)`block <Label l> <ResultType t> <Instr* instrs> <Instr firstInstr> end`, tail( newInstrs ) )
+  when firstInstr := head( newInstrs );
+
+Instr addInstrs( b:(Instr)`loop <Label l> <ResultType t> <Instr* instrs> end`, [] ) = b;
+Instr addInstrs( (Instr)`loop <Label l> <ResultType t> <Instr* instrs> end`, list[Instr] newInstrs )
+  = addInstrs( (Instr)`loop <Label l> <ResultType t> <Instr* instrs> <Instr firstInstr> end`, tail( newInstrs ) )
+  when firstInstr := head( newInstrs );
+
+Instr addThenInstrs( i:(Instr)`if <Label l> <ResultType t> <Instr* thenInstrs> else <Instr* elseInstrs> end`, [] ) = i;
+Instr addThenInstrs( (Instr)`if <Label l> <ResultType t> <Instr* thenInstrs> else <Instr* elseInstrs> end`, list[Instr] instrs )
+  = addThenInstrs( (Instr)`if <Label l> <ResultType t> <Instr* thenInstrs> <Instr instr> else <Instr* elseInstrs> end`, tail( instrs ) )
+  when instr := head( instrs );
+
+Instr addThenInstrs( i:(Instr)`if <Label l> <ResultType t> <Instr* thenInstrs> end`, [] ) = i;
+Instr addThenInstrs( (Instr)`if <Label l> <ResultType t> <Instr* thenInstrs> end`, list[Instr] instrs )
+  = addThenInstrs( (Instr)`if <Label l> <ResultType t> <Instr* thenInstrs> <Instr instr> end`, tail( instrs ) )
+  when instr := head( instrs );
+
+Instr addElseInstrs( i:(Instr)`if <Label l> <ResultType t> <Instr* thenInstrs> else <Instr* elseInstrs> end`, [] ) = i;
+Instr addElseInstrs( (Instr)`if <Label l> <ResultType t> <Instr* thenInstrs> else <Instr* elseInstrs> end`, list[Instr] instrs )
+  = addElseInstrs( (Instr)`if <Label l> <ResultType t> <Instr* thenInstrs> else <Instr* elseInstrs> <Instr instr> end`, tail( instrs ) )
+  when instr := head( instrs );
+
+default list[Instr] desugar( FoldedInstr i ) = [(Instr)`<FoldedInstr i>`];
+default list[Instr] desugar( Instr i ) = [ i ];
+
+// Local
+list[Local] desugar( l:(Local)`(local <Id id> <ValType valType>)` ) = [ l ];
+list[Local] desugar( (Local)`(local <ValType valType> <ValType* valTypes>)` ) = (Local)`(local <ValType valType>)` + desugar( (Local)`(local <ValType* valTypes>)` );
+list[Local] desugar( (Local)`(local)` ) = [];
+
+// Type
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, m:(ModuleField)`<Type t>` ) {
+  m2 = visit( m ) {
+  case FuncType t => desugar( t )
+  }
+  return <desc,[m2]>;
 }
 
-Module appendTypes( (Module)`(module <Id? id> <ModuleFields fields>)`, list[TypeDesc] types )
-  = (Module)`(module <Id? id> <ModuleFields concatFields>)`
-  when concatFields := concat( fields, toSyntaxFields( types ) );
+FuncType desugar( (FuncType)`(func <Param* ps> <Result* rs>)` )
+  = addResults( addParams( (FuncType)`(func)`, desugar( ps ) ), desugar( rs ) );
+
+// ## Tables
+//
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(table (export <Name name>) <TableFields fields>)` )
+  = <desc3, (ModuleField)`(export <Name name> (table <TableIdx id>))` + desFields>
+  when <desc2,id> := getFreshId( desc ),
+       <desc3,desFields> := desugar( desc2, (ModuleField)`(func <Id id> <FuncFields fields>)` );
+  
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(table <Id id> (export <Name name>) <TableFields fields>)` )
+  = <desc2, (ModuleField)`(export <Name name> (table <TableIdx id>))` + desugaredFields>
+  when <desc2, desugaredFields> := desugar( desc, (ModuleField)`(func <Id id> <FuncFields fields>)` );
+
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(table <Id? id> (import <Name modName> <Name tableName>) <TableType tableType>)` )
+  = <desc, [ (ModuleField)`(import <Name modName> <Name tableName> (table <Id? id> <TableType tableType>))` ]>;
+
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(table <Id id> <ElemType eType> (elem <FuncIdx* idxs>))` )
+  = <desc2, (ModuleField)`(table <Id id> <U32 n> <U32 n> <ElemType eType>)` + elemFields>
+  when n := parse( #U32, toString( size( [ i | i <- idxs ] ) ) ),
+       <desc2,elemFields> := desugar( desc, (ModuleField)`(elem <Id id> (i32.const 0) <FuncIdx* idxs>)` );
+
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(table <ElemType eType> (elem <FuncIdx* idxs>))` )
+  = <desc3, (ModuleField)`(table <Id id> <U32 n> <U32 n> <ElemType eType>)` + elemFields>
+  when <desc2,id> := getFreshId( desc ),
+       n := parse( #U32, toString( size( [ i | i <- idxs ] ) ) ),
+       <desc3,elemFields> := desugar( desc2, (ModuleField)`(elem <Id id> (i32.const 0) <FuncIdx* idxs>)` );
+
+// ## Memories
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(memory (export <Name name>) <MemFields fields>)` )
+  = <desc3, (ModuleField)`(export <Name name> (memory <Id id>))` + desFields>
+  when <desc2,id> := getFreshId( desc ),
+       <desc3,desFields> := desugar( desc2, (ModuleField)`(memory <Id id> <MemFields fields>)` );
+  
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(memory <Id id> (export <Name name>) <MemFields fields>)` )
+  = <desc2, (ModuleField)`(export <Name name> (global <Id id>))` + desFields>
+  when <desc2, desFields> := desugar( desc, (ModuleField)`(memory <Id id> <MemFields fields>)` );
+
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(memory <Id? id> (import <Name modName> <Name globalName>) <MemType memType>)` )
+  = <desc, [ (ModuleField)`(import <Name modName> <Name globalName> (memory <Id? id> <MemType memType>))` ]>;
+
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(memory <Id id> (data <DataString b>))` )
+  = <desc, [ (ModuleField)`(memory <Id id> <U32 m> <U32 m>)`, (ModuleField)`(data <Id id> (i32.const 0) <DataString b>)` ]>
+  when m := parse( #U32, toString( ceil( len( b ) / ( 64 * 1024.0 ) ) ) );
+
+int len( (DataString)`<String* s>` ) = sum( [ len( x ) | x <- s ] );
+
+// TODO: Perhaps make this byte length, instead of unicode length
+//       Spec is unclear about this
+int len( String s ) {
+  int count = 0;
+  visit ( s ) {
+  case StringElem e: count = count + 1;
+  }
+  return count;
+}
+
+// ## Globals
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(global (export <Name name>) <GlobalFields fields>)` )
+  = <desc3, (ModuleField)`(export <Name name> (global <GlobalIdx id>))` + desFields>
+  when <desc2,id> := getFreshId( desc ),
+       <desc3,desFields> := desugar( desc2, (ModuleField)`(global <Id id> <GlobalFields fields>)` );
+  
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(global <Id id> (export <Name name>) <GlobalFields fields>)` )
+  = <desc2, (ModuleField)`(export <Name name> (global <GlobalIdx id>))` + desFields>
+  when <desc2, desFields> := desugar( desc, (ModuleField)`(global <Id id> <GlobalFields fields>)` );
+
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(global <Id? id> (import <Name modName> <Name globalName>) <GlobalType globalType>)` )
+  = <desc, [ (ModuleField)`(import <Name modName> <Name globalName> (global <Id? id> <GlobalType globalType>))` ]>;
+  
+// ## Elements
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(elem <ElemFields f>)` )
+  = desugar( desc, (ModuleField)`(elem 0 <ElemFields f>)` );
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(elem <TableIdx idx> <Instr i> <FuncIdx* idxs>)` )
+  = <desc, [(ModuleField)`(elem <TableIdx idx> (offset <Instr i>) <FuncIdx* idxs>)`]>;
+
+// ## Data
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(data <DataFields f>)` )
+  = desugar( desc, (ModuleField)`(data 0 <DataFields f>)` );
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(data <MemIdx? idx> <Instr i> <DataString b>)` )
+  = <desc, [(ModuleField)`(data <MemIdx? idx> (offset <Instr i>) <DataString b>)`]>;
+
+// Module default
+default tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, ModuleField f ) = <desc,[f]>;
+
+// Helpers
+
+list[Param] desugar( p:(Param)`(param <Id id> <ValType _>)` ) = [ p ];
+list[Param] desugar( p:(Param)`(param <ValType valType> <ValType* valTypes>)` ) = (Param)`(param <ValType valType>)` + desugar( (Param)`(param <ValType* valTypes>)` );
+list[Param] desugar( p:(Param)`(param)` ) = [];
+list[Param] desugar( Param* params ) = [ x | p <- params, x <- desugar( p ) ];
+
+list[Result] desugar( r:(Result)`(result <Id id> <ValType _>)` ) = [ p ];
+list[Result] desugar( r:(Result)`(result <ValType valType> <ValType* valTypes>)` ) = (Result)`(result <ValType valType>)` + desugar( (Result)`(result <ValType* valTypes>)` );
+list[Result] desugar( r:(Result)`(result)` ) = [];
+list[Result] desugar( Result* results ) = [ x | r <- results, x <- desugar( r ) ];
+
+Module prependFields( m:(Module)`(module <Id? id> <ModuleField* fields>)`, [] ) = m;
+Module prependFields( m:(Module)`(module <Id? id> <ModuleField* fields>)`, list[ModuleField] newFields )
+  = prependFields( (Module)`(module <Id? id> <ModuleField newField> <ModuleField* fields>)`, prefix( newFields ) )
+  when newField := last( newFields );
+
+FuncBody addLocals( b:(FuncBody)`<Local* locals> <Instr* instrs>`, [] ) = b;
+FuncBody addLocals( (FuncBody)`<Local* locals> <Instr* instrs>`, list[Local] newLocals )
+  = addLocals( (FuncBody)`<Local* locals> <Local first> <Instr* instrs>`, tail( newLocals ) )
+  when first := head( newLocals );
+
+FuncBody addInstrs( b:(FuncBody)`<Local* locals> <Instr* instrs>`, [] ) = b;
+FuncBody addInstrs( (FuncBody)`<Local* locals> <Instr* instrs>`, list[Instr] newInstrs )
+  = addInstrs( (FuncBody)`<Local* locals> <Instr* instrs> <Instr first>`, tail( newInstrs ) )
+  when first := head( newInstrs );
+  
+TypeUse addParams( t:(TypeUse)`<Param* ps> <Result* rs>`, [] ) = t; 
+TypeUse addParams( (TypeUse)`<Param* ps> <Result* rs>`, list[Param] params )
+  = addParams( (TypeUse)`<Param* ps> <Param p> <Result* rs>`, tail( params ) )
+  when p := head( params );
+  
+TypeUse addResults( t:(TypeUse)`<Param* ps> <Result* rs>`, [] ) = t; 
+TypeUse addResults( (TypeUse)`<Param* ps> <Result* rs>`, list[Result] results )
+  = addResults( (TypeUse)`<Param* ps> <Result* rs> <Result r>`, tail( results ) )
+  when r := head( results );
+  
+FuncType addParams( t:(FuncType)`(func <Param* ps> <Result* rs>)`, [] ) = t; 
+FuncType addParams( (FuncType)`(func <Param* ps> <Result* rs>)`, list[Param] params )
+  = addParams( (FuncType)`(func <Param* ps> <Param p> <Result* rs>)`, tail( params ) )
+  when p := head( params );
+  
+FuncType addResults( t:(FuncType)`(func <Param* ps> <Result* rs>)`, [] ) = t; 
+FuncType addResults( (FuncType)`(func <Param* ps> <Result* rs>)`, list[Result] results )
+  = addResults( (FuncType)`(func <Param* ps> <Result* rs> <Result r>)`, tail( results ) )
+  when r := head( results );
+
+tuple[ModuleDesc,TypeUse] desugar( ModuleDesc desc, (TypeUse)`(type <TypeIdx idx>) <Param* ps> <Result* rs>` )
+  = <desc, (TypeUse)`(type <TypeIdx idx>) <Param* desPs> <Result* desRs>`>
+  when (TypeUse)`<Param* desPs> <Result* desRs>` := addResults( addParams( (TypeUse)``, desugar( ps ) ), desugar( rs ) );
+
+tuple[ModuleDesc,TypeUse] desugar( ModuleDesc desc, (TypeUse)`<Param* ps> <Result* rs>` )
+  = <desc2, (TypeUse)`(type <UN idLex>) <Param* desPs> <Result* desRs>`>
+  when (TypeUse)`<Param* desPs> <Result* desRs>` := addResults( addParams( (TypeUse)``, desugar( ps ) ), desugar( rs ) ),
+       <desc2, id> := findTypeIndex( desc, desPs, desRs ),
+       idLex := parse( #UN, "<id>" );
 
 // ## Utils
 set[str] occurringIds( start[WebAssembly] w ) {
@@ -210,7 +303,7 @@ set[str] occurringIds( start[WebAssembly] w ) {
 list[TypeDesc] getFuncTypes( Module m ) {
   list[TypeDesc] types = [];
   visit ( m ) {
-  case (Type)`(type <Id? id> (func <Params ps> <Results rs>))`: {
+  case (Type)`(type <Id? id> (func <Param* ps> <Result* rs>))`: {
     types += typeDesc( getTypes( desugar( ps ) ), getTypes( desugar( rs ) ) );
   }
   }
@@ -246,12 +339,12 @@ tuple[ModuleDesc,Id] getFreshId( moduleDesc( types, ids ) ) {
  * function type. If no such index exists, then a new type definition is
  * inserted at the end of the module.
  */
-tuple[ModuleDesc,int] findTypeIndex( moduleDesc( types, ids ), Params params, Results results ) {
-  newType = typeDesc( getTypes( params ), getTypes( results ) );
+tuple[ModuleDesc,int] findTypeIndex( m:moduleDesc( types, ids ), Param* params, Result* results ) {
+  newType = typeDesc( getTypes( [ p | p <- params ] ), getTypes( [ r | r <- results ] ) );
   int index = 0;
   for ( TypeDesc \type <- types ) {
     if ( \type == newType ) {
-      return index;
+      return <m,index>;
     }
     index = index + 1;
   }
