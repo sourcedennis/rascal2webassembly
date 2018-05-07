@@ -4,7 +4,9 @@ layout Layout = Space* !>> " " !>> [\t\n\r] !>> ";;" !>> "(;";
 
 // ### Syntax Format ###
 
-start syntax WebAssembly = Module;
+start syntax WebAssembly = Module
+                         | ModuleField* // sugar
+                         ;
 
 // -- Types --
 
@@ -115,13 +117,13 @@ syntax MemArg = Offset Align;
 
 syntax Expr = Instr*;
 
-lexical TypeIdx = U32 | Id;
-lexical FuncIdx = U32 | Id;
-lexical TableIdx = U32 | Id;
-lexical MemIdx = U32 | Id;
-lexical GlobalIdx = U32 | Id;
-lexical LocalIdx = U32 | Id;
-lexical LabelIdx = U32 | Id;
+syntax TypeIdx = U32 | Id;
+syntax FuncIdx = U32 | Id;
+syntax TableIdx = U32 | Id;
+syntax MemIdx = U32 | Id;
+syntax GlobalIdx = U32 | Id;
+syntax LocalIdx = U32 | Id;
+syntax LabelIdx = U32 | Id;
 
 lexical Offset = "offset=" U32
                |
@@ -277,7 +279,9 @@ syntax ElemFields = "(" "offset" Expr ")" FuncIdx*
                   | Instr FuncIdx*
                   ;
 
-syntax Data = "(" "data" MemIdx? DataFields ")"
+// For some reason MemIdx? does not properly work with pattern matching
+syntax Data = "(" "data" MemIdx DataFields ")"
+            | "(" "data" DataFields ")"
             ;
             
 syntax DataFields = "(" "offset" Expr ")" DataString
