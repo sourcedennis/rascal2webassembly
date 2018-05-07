@@ -1,8 +1,9 @@
-module lang::webassembly::StringParser
+module lang::webassembly::StringSyntax
 
 // By the WebAssembly spec, strings are lexical entities
 // However, they need to be converted to UTF-8 byte sequences
-// therefore this complementary grammar is introduced
+// for their binary representation in the ADT. To facilitate this
+// conversion this complementary grammar is introduced
 
 start syntax String = "\"" StringElem* "\"";
 
