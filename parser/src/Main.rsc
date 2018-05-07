@@ -9,11 +9,38 @@ import lang::webassembly::ScriptSyntax;
 import lang::webassembly::ADT;
 import lang::webassembly::ConvertADT;
 import lang::webassembly::Desugar;
+import lang::webassembly::Execution;
 import Exception;
 
 start[WebAssembly] parseWasm( str s ) = parse( #start[WebAssembly], s );
 start[WebAssemblyScript] parseWasmScript( loc l ) = parse( #start[WebAssemblyScript], l );
 start[WebAssemblyScript] parseWasmScript( str s ) = parse( #start[WebAssemblyScript], s );
+
+void mainExecute( ) {
+  str s = "(module
+          '  (start 0)
+          '  (func
+          '    (drop (i32.add (i32.const 1) (i32.add (i32.const 2) (i32.const 3))))
+          '  )
+          ')";
+  start[WebAssembly] concrete = parseWasm( s );
+  start[WebAssembly] desugarConcrete = desugar( concrete );
+  tree = toADT( desugarConcrete );
+  
+  config c = setupExecutionConfig( tree );
+  println( c );
+  
+  while ( !isDone( c ) ) {
+    config c2 = execStep( c );
+    
+    if ( c == c2 ) {
+      break;
+    }
+    
+    c = c2;
+    println( c );
+  }
+}
 
 void mainParse( ) {
   loc lTestSuite = |project://testsuite/|;
@@ -29,7 +56,7 @@ void mainParse( ) {
   println( unsuccessfulFiles );
 }
 
-void main2( ) {
+void mainDesugar( ) {
   loc lTestSuite = |project://testsuite/|;
   set[loc] lTestFiles = { f | f <- lTestSuite.ls, !isDirectory(f), f.extension == "wast" };
   
@@ -53,7 +80,7 @@ void main2( ) {
   }
 }
 
-void main3( ) {
+void mainToADT( ) {
   str s = "(module
           '  (memory 1)
           '  (data (i32.const 0) \"abcdefghijklmnopqrstuvwxyz\")
