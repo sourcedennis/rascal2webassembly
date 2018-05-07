@@ -2,7 +2,7 @@ module lang::webassembly::ADT
 
 data VALTYPE = i32( ) | i64( ) | f32( ) | f64( );
 
-data RESULTTYPE = resulttype( VALTYPE );
+data RESULTTYPE = resulttype( list[VALTYPE] );
 
 data FUNCTYPE = functype( list[VALTYPE] input, list[VALTYPE] result );
 
@@ -154,12 +154,8 @@ data INSTR = i32_const( int ival )
            | f64_convert_u_i64( )
            | f64_convert_s_i64( )
            | i32_reinterpret_f32( )
-           | i32_reinterpret_f64( )
-           | i64_reinterpret_f32( )
            | i64_reinterpret_f64( )
            | f32_reinterpret_i32( )
-           | f32_reinterpret_i64( )
-           | f64_reinterpret_i32( )
            | f64_reinterpret_i64( )
            // parametric instructions
            | drop( )
@@ -200,9 +196,7 @@ data INSTR = i32_const( int ival )
            | nop( )
            | unreachable( )
            | block( RESULTTYPE restype, list[INSTR] instrs )
-           | block( list[INSTR] instrs )
            | loop( RESULTTYPE restype, list[INSTR] instrs )
-           | loop( list[INSTR] instrs )
            | \if( RESULTTYPE, list[INSTR] ifInstrs, list[INSTR] elseInstrs )
            | br( LABELIDX li )
            | br_if( LABELIDX li )
@@ -247,6 +241,7 @@ alias byte = int;
 
 alias NAME = str;
 
+// The locals are the local variables only. Excludes the parameters
 data FUNC = func( TYPEIDX, list[VALTYPE] locals, EXPR body );
 data TABLE = table( TABLETYPE \type );
 data MEM = mem( MEMTYPE \type );
@@ -255,14 +250,14 @@ data ELEM = elem( TABLEIDX, EXPR offset, list[FUNCIDX] init );
 data DATA = \data( MEMIDX, EXPR offset, list[byte] init );
 data START = \start( FUNCIDX );
 data IMPORT = \import( NAME \module, NAME name, IMPORTDESC desc );
-data IMPORTDESC = importdesc( TYPEIDX i )
-                | importdesc( TABLETYPE tt )
-                | importdesc( MEMTYPE mt )
-                | importdesc( GLOBALTYPE gt )
+data IMPORTDESC = importdesc_func( TYPEIDX i )
+                | importdesc_table( TABLETYPE tt )
+                | importdesc_mem( MEMTYPE mt )
+                | importdesc_global( GLOBALTYPE gt )
                 ;
 data EXPORT = export( NAME name, EXPORTDESC desc );
-data EXPORTDESC = exportdesc( FUNCIDX i )
-                | exportdesc( TABLEIDX i )
-                | exportdesc( MEMIDX i )
-                | exportdesc( GLOBALIDX i )
+data EXPORTDESC = exportdesc_func( FUNCIDX i )
+                | exportdesc_table( TABLEIDX i )
+                | exportdesc_mem( MEMIDX i )
+                | exportdesc_global( GLOBALIDX i )
                 ;
