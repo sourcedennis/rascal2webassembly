@@ -60,12 +60,9 @@ GLOBAL toADT( IdContext ctx, (Global)`(global <Id? _> <GlobalType gType> <Expr i
 GLOBALTYPE toADT( (GlobalType)`<ValType valType>` ) = globaltype( const( ), toADT( valType ) );
 GLOBALTYPE toADT( (GlobalType)`(mut <ValType valType>)` ) = globaltype( var( ), toADT( valType ) );
 EXPR toADT( IdContext ctx, (Expr)`<Instr* instrs>` ) = expr( [ toADT( ctx, i ) | i <- instrs ] );
-ELEM toADT( IdContext ctx, (Elem)`(elem <TableIdx idx> (offset <Expr expr>) <FuncIdx* idxs>)` ) = elem( toADT( getIndex( ctx, idx ), toADT( ctx, expr ), [ getIndex( ctx, i ) | i <- idxs ] ) );
+ELEM toADT( IdContext ctx, (Elem)`(elem <TableIdx idx> (offset <Expr expr>) <FuncIdx* idxs>)` ) = elem( getIndex( ctx, idx ), toADT( ctx, expr ), [ getIndex( ctx, i ) | i <- idxs ] );
 
-DATA toADT( IdContext ctx, (Data)`(data <MemIdx idx> (offset <Expr offsetExpr>) <DataString init>)` ) {
-  println( idx );
-  return \data( getIndex( ctx, idx ), toADT( ctx, offsetExpr ), toUTF8Bytes( init ) );
-}
+DATA toADT( IdContext ctx, (Data)`(data <MemIdx idx> (offset <Expr offsetExpr>) <DataString init>)` ) = \data( getIndex( ctx, idx ), toADT( ctx, offsetExpr ), toUTF8Bytes( init ) );
 
 START toADT( IdContext ctx, (Start)`(start <FuncIdx idx>)` ) = \start( getIndex( ctx, idx ) );
 
@@ -147,15 +144,15 @@ VALTYPE toADT( (Param)`(param <ValType valType>)` ) = toADT( valType );
 int parseOffset( Offset offset ) = toInt( substring( "<offset>", 7 ) ); // offset=<U32>
 int parseAlign( Align align ) = toInt( substring( "<align>", 6 ) ); // align=<U32>
 
+tuple[int,int] parseMemArg( (MemArg)``, int naturalAlignment ) = < 0, naturalAlignment >;
 tuple[int,int] parseMemArg( (MemArg)`<Offset offset>`, int naturalAlignment ) = < parseOffset( offset ), naturalAlignment >;
 tuple[int,int] parseMemArg( (MemArg)`<Align align>`, int naturalAlignment ) = < 0, parseAlign( align ) >;
 tuple[int,int] parseMemArg( (MemArg)`<Offset offset> <Align align>`, int naturalAlignment ) = < parseOffset( offset ), parseAlign( align ) >;
-tuple[int,int] parseMemArg( (MemArg)``, int naturalAlignment ) = < 0, naturalAlignment >;
 
 INSTR toADT( IdContext ctx, (Instr)`i32.const <I32 val>` ) = i32_const( toInt( "<val>" ) );
-INSTR toADT( IdContext ctx, (Instr)`i64.const <I64 val>` ) = i32_const( toInt( "<val>" ) );
-INSTR toADT( IdContext ctx, (Instr)`f32.const <F32 val>` ) = i32_const( toReal( "<val>" ) );
-INSTR toADT( IdContext ctx, (Instr)`f64.const <F64 val>` ) = i32_const( toReal( "<val>" ) );
+INSTR toADT( IdContext ctx, (Instr)`i64.const <I64 val>` ) = i64_const( toInt( "<val>" ) );
+INSTR toADT( IdContext ctx, (Instr)`f32.const <F32 val>` ) = f32_const( toReal( "<val>" ) );
+INSTR toADT( IdContext ctx, (Instr)`f64.const <F64 val>` ) = f64_const( toReal( "<val>" ) );
 // iunop
 INSTR toADT( IdContext ctx, (Instr)`i32.clz` ) = i32_clz( );
 INSTR toADT( IdContext ctx, (Instr)`i32.ctz` ) = i32_ctz( );
@@ -297,6 +294,7 @@ INSTR toADT( IdContext ctx, (Instr)`tee_local <LocalIdx idx>` ) = tee_local( get
 INSTR toADT( IdContext ctx, (Instr)`get_global <GlobalIdx idx>` ) = get_global( getIndex( ctx, idx ) );
 INSTR toADT( IdContext ctx, (Instr)`set_global <GlobalIdx idx>` ) = set_global( getIndex( ctx, idx ) );
 // memory instructions
+// TODO: Check potential logarithmic base of natural alignment
 INSTR toADT( IdContext ctx, (Instr)`i32.load <MemArg memArg>` ) = i32_load( offset, align ) when <offset,align> := parseMemArg( memArg, 4 );
 INSTR toADT( IdContext ctx, (Instr)`i64.load <MemArg memArg>` ) = i64_load( offset, align ) when <offset,align> := parseMemArg( memArg, 8 );
 INSTR toADT( IdContext ctx, (Instr)`f32.load <MemArg memArg>` ) = f32_load( offset, align ) when <offset,align> := parseMemArg( memArg, 4 );
@@ -322,9 +320,10 @@ INSTR toADT( IdContext ctx, (Instr)`i64.store16 <MemArg memArg>` ) = i64_store16
 INSTR toADT( IdContext ctx, (Instr)`i64.store32 <MemArg memArg>` ) = i64_store32( offset, align ) when <offset,align> := parseMemArg( memArg, 4 );
 INSTR toADT( IdContext ctx, (Instr)`memory.size` ) = memory_size( );
 INSTR toADT( IdContext ctx, (Instr)`memory.grow` ) = memory_grow( );
+
 // control instructions
-INSTR toADT( IdContext ctx, (Instr)`nop` ) = <ctx, nop( )>;
-INSTR toADT( IdContext ctx, (Instr)`unreachable` ) = <ctx, unreachable( )>;
+INSTR toADT( IdContext ctx, (Instr)`nop` ) = nop( );
+INSTR toADT( IdContext ctx, (Instr)`unreachable` ) = unreachable( );
 INSTR toADT( ctx:idContext( a, b, c, d, e, f, g, h, numLabels, labelNames ), (Instr)`block <ResultType resType> <Instr* instrs> end <Id? _>` ) {
   ctx2 = idContext( a, b, c, d, e, f, g, h, numLabels + 1, labelNames );
   return block( toADT( resType ), [ toADT( ctx2, i ) | i <- instrs ] );
@@ -373,7 +372,7 @@ INSTR toADT( IdContext ctx, (Instr)`i32.load8_u <MemArg memArg>` ) = i32_load8_u
 INSTR toADT( IdContext ctx, (Instr)`i32.load <MemArg memArg>` ) = i32_load( offset, align ) when <offset,align> := parseMemArg( memArg, 4 );
 default INSTR toADT( IdContext ctx, Instr instr ) = nop( );
 
-// Id Context
+// Id Context. It is passed along to most functions, such that names (textual identifiers) can be resolved
 data ParamDesc = param( VALTYPE valType, str name ) | param( VALTYPE valType );
 data ResultDesc = result( VALTYPE valType, str name ) | result( VALTYPE valType );
 alias FuncTypeDesc = tuple[list[ParamDesc],list[ResultDesc]];
@@ -486,6 +485,7 @@ IdContext setupGlobalContext( Module m ) {
   return idContext( types, typeNames, funcNames, tableNames, memNames, globalNames, 0, localNames, 0, labelNames ); 
 }
 
+// idContext( types, typeNames, funcNames, tableNames, memNames, globalNames, 0, localNames, 0, labelNames )
 int getIndex( idContext( _, _, _, _, _, _, _, localNames, _, _ ), (LocalIdx)`<U32 id>` ) = toInt( "<id>" );
 int getIndex( idContext( _, _, _, _, _, _, _, localNames, _, _ ), (LocalIdx)`<Id id>` ) = localNames[ "<id>" ];
 int getIndex( idContext( _, typeNames, _, _, _, _, _, _, _, _ ), (TypeIdx)`<U32 id>` ) = toInt( "<id>" );
@@ -497,6 +497,7 @@ int getIndex( idContext( _, _, _, _, _, _, _, _, numLabels, labelNames ), (Label
 int getIndex( idContext( _, _, _, _, _, _, _, _, numLabels, labelNames ), (LabelIdx)`<Id id>` ) = numLabels - 1 - labelNames[ "<id>" ];
 int getIndex( idContext( _, _, funcNames, _, _, _, _, _, _, _ ), (FuncIdx)`<U32 id>` ) = toInt( "<id>" );
 int getIndex( idContext( _, _, funcNames, _, _, _, _, _, _, _ ), (FuncIdx)`<Id id>` ) = funcNames[ "<id>" ];
-
-int getIndex( idContext( _, _, _, _, _, _, _, _, _, _ ), (MemIdx)`<U32 id>` ) = toInt( "<id>" );
-int getIndex( idContext( _, _, _, _, _, _, _, _, _, _ ), (MemIdx)`<Id id>` ) = 0; // TODO
+int getIndex( idContext( _, _, _, _, memNames, _, _, _, _, _ ), (MemIdx)`<U32 id>` ) = toInt( "<id>" );
+int getIndex( idContext( _, _, _, _, memNames, _, _, _, _, _ ), (MemIdx)`<Id id>` ) = memNames[ "<id>" ];
+int getIndex( idContext( _, _, _, tableNames, _, _, _, _, _, _ ), (TableIdx)`<U32 id>` ) = toInt( "<id>" );
+int getIndex( idContext( _, _, _, tableNames, _, _, _, _, _, _ ), (TableIdx)`<Id id>` ) = tableNames[ "<id>" ];

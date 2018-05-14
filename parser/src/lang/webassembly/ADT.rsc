@@ -16,7 +16,7 @@ data ELEMTYPE = anyfunc( );
 
 data TABLETYPE = tabletype( LIMITS l, ELEMTYPE e );
 
-data GLOBALTYPE = globaltype( MUT, VALTYPE );
+data GLOBALTYPE = globaltype( MUT mut, VALTYPE vt );
 
 data MUT = const( )
          | var( )
@@ -131,7 +131,7 @@ data INSTR = i32_const( int ival )
            | f64_gt( )
            | f64_le( )
            | f64_ge( )
-           //
+           // cvtop
            | i32_wrap_i64( )
            | i64_extend_u_i32( )
            | i64_extend_s_i32( )

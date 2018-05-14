@@ -11,6 +11,7 @@ import lang::webassembly::ConvertADT;
 import lang::webassembly::Desugar;
 import lang::webassembly::Execution;
 import Exception;
+import util::Math;
 
 start[WebAssembly] parseWasm( str s ) = parse( #start[WebAssembly], s );
 start[WebAssemblyScript] parseWasmScript( loc l ) = parse( #start[WebAssemblyScript], l );
@@ -18,29 +19,55 @@ start[WebAssemblyScript] parseWasmScript( str s ) = parse( #start[WebAssemblyScr
 
 void mainExecute( ) {
   str s = "(module
-          '  (start 0)
-          '  (func
-          '    (drop (i32.add (i32.const 1) (i32.add (i32.const 2) (i32.const 3))))
+          '  (memory (data \"Whitespace\"))
+          '  (table $t anyfunc (elem $add $sub))
+          '  (global $g1 (mut i32) (i32.const 18))
+          '  (start $first)
+          '  (func $add (param $a i32) (param $b i32) (result i32)
+          '    (i32.add (get_local $a) (get_local $b))
+          '  )
+          '  (func $sub (param $a i32) (param $b i32) (result i32)
+          '    (i32.sub (get_local $a) (get_local $b))
+          '  )
+          '  (func $first (result i32)
+          '    i32.const 5
+          '    i32.const 4
+          '    i32.const 0
+          '    call_indirect (param i32 i32) (result i32)
+          '    drop
           '  )
           ')";
   start[WebAssembly] concrete = parseWasm( s );
   start[WebAssembly] desugarConcrete = desugar( concrete );
+  println( desugarConcrete );
   tree = toADT( desugarConcrete );
   
   config c = setupExecutionConfig( tree );
-  println( c );
+  println( stack2str( c.t.stack ) );
   
   while ( !isDone( c ) ) {
-    config c2 = execStep( c );
+    config c2 = reduce( c );
     
     if ( c == c2 ) {
       break;
     }
     
     c = c2;
-    println( c );
+    println( stack2str( c.t.stack ) );
   }
+  
+  println( c.s.mems[0].\data[0..10] );
 }
+
+str stack2str( Stack s ) = "[" + joinStr( [ stack2str( v ) | v <- s ], ", " ) + "]";
+str stack2str( sev( v ) ) = "<v>";
+str stack2str( sei( i ) ) = "<i>";
+str stack2str( sec( c ) ) = "<c>";
+str stack2str( sel( retArity, _ ) ) = "#label(<retArity>)";
+str stack2str( sef( retArity, frame( locals, _ ) ) ) = "frame(<retArity>,<locals>)";
+str joinStr( [], str delim ) = "";
+str joinStr( [e], str delim ) = e;
+str joinStr( [e, *L], str delim ) = e + delim + joinStr( L, delim );
 
 void mainParse( ) {
   loc lTestSuite = |project://testsuite/|;

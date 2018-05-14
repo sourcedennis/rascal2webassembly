@@ -1,7 +1,7 @@
 module lang::webassembly::String2UTF8
 
 import ParseTree;
-import lang::webassembly::StringParser;
+import lang::webassembly::StringSyntax;
 import String;
 
 public alias byte = int;

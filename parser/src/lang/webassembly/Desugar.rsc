@@ -13,12 +13,26 @@ import lang::webassembly::String2UTF8;
 
 start[WebAssembly] desugar( (start[WebAssembly])`<ModuleField* fields>` ) = desugar( (start[WebAssembly])`(module <ModuleField* fields>)` );
 
+// TODO: Currently all types are registered while modifying the tree
+//       Perhaps it would be better to register the types ahead of time
+//       and then desugar the rest. For now, this works.
 start[WebAssembly] desugar( (start[WebAssembly])`<Module m>` ) =
   (start[WebAssembly])`<Module m3>`
   when initialTypes := getFuncTypes( m ),
-       <moduleDesc(finalTypes,_), m2> := desugar( moduleDesc( initialTypes, occurringIds( m ) ), m ),
+       <desc2,m1> := desugarTypeUses( moduleDesc( initialTypes, occurringIds( m ) ), m ),
+       <moduleDesc(finalTypes,_), m2> := desugar( desc2, m1 ),
        newTypes := finalTypes - initialTypes,
        m3 := appendTypes( m2, newTypes );
+
+tuple[ModuleDesc, Module] desugarTypeUses( ModuleDesc desc, Module m ) {
+  m = visit ( m ) {
+  case TypeUse t: {
+    <desc,t2> = desugar( desc, t );
+    insert t2;
+  }
+  }
+  return <desc,m>;
+}
 
 Type toSyntaxField( typeDesc( list[ValType] paramValTypes, list[ValType] resultValTypes ) )
   = (Type)`(type <FuncType funcType>)`
@@ -188,6 +202,10 @@ tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(mem
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(memory <Id? id> (import <Name modName> <Name globalName>) <MemType memType>)` )
   = <desc, [ (ModuleField)`(import <Name modName> <Name globalName> (memory <Id? id> <MemType memType>))` ]>;
 
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(memory (data <DataString b>))` )
+  = desugar( desc2, (ModuleField)`(memory <Id id> (data <DataString b>))` )
+  when <desc2,id> := getFreshId( desc );
+       
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(memory <Id id> (data <DataString b>))` )
   = <desc2, [ (ModuleField)`(memory <Id id> <U32 m> <U32 m>)` ] + desDataField >
   when m := parse( #U32, toString( ceil( len( b ) / ( 64 * 1024.0 ) ) ) ),
@@ -209,11 +227,22 @@ tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(glo
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(global <Id? id> (import <Name modName> <Name globalName>) <GlobalType globalType>)` )
   = <desc, [ (ModuleField)`(import <Name modName> <Name globalName> (global <Id? id> <GlobalType globalType>))` ]>;
   
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(global <Id? id> <GlobalType globalType> <Expr expr>)` )
+  = <desc, [ (ModuleField)`(global <Id? id> <GlobalType globalType> <Expr desExpr>)` ]>
+  when desExpr := desugar( expr );
+
+Expr desugar( (Expr)`<Instr* instrs>` ) = concat( (Expr)``, [ x | i <- instrs, x <- desugar( i ) ] );
+Expr concat( e:(Expr)`<Instr* instrs>`, [] ) = e;
+Expr concat( (Expr)`<Instr* instrs>`, [ newInstr, *newInstrs ] ) = concat( (Expr)`<Instr* instrs> <Instr newInstr>`, newInstrs ); 
+  
 // ## Elements
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(elem <ElemFields f>)` )
   = desugar( desc, (ModuleField)`(elem 0 <ElemFields f>)` );
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(elem <TableIdx idx> <Instr i> <FuncIdx* idxs>)` )
-  = <desc, [(ModuleField)`(elem <TableIdx idx> (offset <Instr i>) <FuncIdx* idxs>)`]>;
+  = desugar( desc, (ModuleField)`(elem <TableIdx idx> (offset <Instr i>) <FuncIdx* idxs>)` );
+tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(elem <TableIdx idx> (offset <Expr expr>) <FuncIdx* idxs>)` )
+  = <desc, [ (ModuleField)`(elem <TableIdx idx> (offset <Expr desExpr>) <FuncIdx* idxs>)` ] >
+  when desExpr := desugar( expr );
 
 // ## Data
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(data <DataFields f>)` )
