@@ -16,8 +16,10 @@ syntax InlineModule = ModuleField*;
 syntax Cmd = Action
            | Assertion
            | ScriptModule
-           | "(" "register" Name Id? ")"
+           | Register
            ;
+           
+syntax Register = "(" "register" Name Id? ")";
            
 syntax Action = "(" "invoke" Id? Name Const* ")"
               | "(" "get" Id? Name ")"
@@ -27,10 +29,10 @@ syntax Assertion = "(" "assert_malformed" ScriptModule String ")"
                  | "(" "assert_invalid" ScriptModule String ")"
                  | "(" "assert_unlinkable" ScriptModule String ")"
                  | "(" "assert_trap" ScriptModule String ")"
+                 | "(" "assert_trap" Action String ")"
                  | "(" "assert_return" Action Const* ")"
                  | "(" "assert_return_canonical_nan" Action ")"
                  | "(" "assert_return_arithmetic_nan" Action ")"
-                 | "(" "assert_trap" Action String ")"
                  | "(" "assert_exhaustion" Action String ")"
                  ;
 

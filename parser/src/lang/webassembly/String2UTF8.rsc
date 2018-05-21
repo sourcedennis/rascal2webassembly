@@ -23,6 +23,16 @@ public int wasmStringUTF8Length( str s ) {
   return len;
 }
 
+// A string in WASM format (with quotes) to the string it represents
+public str toPayload( str s ) {
+  String tree = parse( #String, s );
+  str payload = "";
+  visit ( tree ) {
+  case StringElem e: payload += toPayload( e );
+  }
+  return payload;
+}
+
 private list[byte] toUTF8Bytes( (StringElem)`\\t` ) = [ charAt( "\t", 0 ) ];
 private list[byte] toUTF8Bytes( (StringElem)`\\n` ) = [ charAt( "\n", 0 ) ];
 private list[byte] toUTF8Bytes( (StringElem)`\\r` ) = [ charAt( "\r", 0 ) ];
@@ -32,6 +42,16 @@ private list[byte] toUTF8Bytes( (StringElem)`\\\\` ) = [ charAt( "\\", 0 ) ];
 private list[byte] toUTF8Bytes( (StringElem)`<HexEscape e>` ) = unicodeCharToUTF8( hex2int( substring( "<e>", 2 ) ) );
 private list[byte] toUTF8Bytes( (StringElem)`\\<HexDigit d1><HexDigit d2>` ) = unicodeCharToUTF8( toInt( "0x<d1><d2>" ) );
 private default list[byte] toUTF8Bytes( StringElem e ) = unicodeCharToUTF8( charAt( "<e>", 0 ) );
+
+private str toPayload( (StringElem)`\\t` ) = "\t";
+private str toPayload( (StringElem)`\\n` ) = "\n";
+private str toPayload( (StringElem)`\\r` ) = "\r";
+private str toPayload( (StringElem)`\\"` ) = "\"";
+private str toPayload( (StringElem)`\\'` ) = "\'";
+private str toPayload( (StringElem)`\\\\` ) = "\\";
+private str toPayload( (StringElem)`<HexEscape e>` ) = stringChars( [ hex2int( substring( "<e>", 2 ) ) ] );
+private str toPayload( (StringElem)`\\<HexDigit d1><HexDigit d2>` ) = stringChars( [ unicodeCharToUTF8( toInt( "0x<d1><d2>" ) ) ] );
+private default str toPayload( StringElem e ) = "<e>";
 
 private list[byte] unicodeCharToUTF8( int unicode ) {
   // Right binary shift is not implemented

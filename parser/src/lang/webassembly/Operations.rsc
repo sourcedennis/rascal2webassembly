@@ -1,8 +1,8 @@
-module lang::webassembly::ExecutionFunctions
+module lang::webassembly::Operations
 
 import List;
 import util::Math;
-import IO; // temp
+import lang::webassembly::Float;
 
 int pow2( int N ) = toInt( pow( 2, N ) );
 // Signed interpretation
@@ -47,7 +47,17 @@ int expon( 32 ) = 8;
 int expon( 64 ) = 11;
 int fbias( int N ) = pow2( expon( N ) - 1 ) - 1;
 
-list[bit] fbits( real f, int N ) {
+list[bit] fbits( canonical_nan( ), 32 ) = ibits( 0x7fc00000, 32 );
+list[bit] fbits( canonical_nan( ), 64 )= ibits( 0x7ff8000000000000, 64 );
+list[bit] fbits( arithmetic_nan( ), 32 ) = ibits( 0x7fc00000, 32 );
+list[bit] fbits( arithmetic_nan( ), 64 )= ibits( 0x7ff8000000000000, 64 );
+list[bit] fbits( positive_infinity( ), 32 ) = ibits( 0x7f800000, 32 );
+list[bit] fbits( positive_infinity( ), 64 )= ibits( 0x7ff0000000000000, 64 );
+list[bit] fbits( negative_infinity( ), 32 ) = ibits( 0xff800000, 32 );
+list[bit] fbits( negative_infinity( ), 64 )= ibits( 0xfff0000000000000, 64 );
+list[bit] fbits( arbitrary_infinity( ), int N ) = fbits( positive_infinity( ), N );
+list[bit] fbits( arbitrary_infinity( ), int N ) = fbits( positive_infinity( ), N );
+list[bit] fbits( fval( v ), int N ) {
   // TODO: Not fully formal
   int exp = 0;
   if ( f * 2 < pow2( signif( N ) ) ) {
@@ -65,13 +75,22 @@ list[bit] fbits( real f, int N ) {
   return [ f >= 0 ? 0 : 1 ] + ibits( exp + fbias( N ), expon( N ) ) + ibits( m, signif( N ) );
 }
 
-real invFbits( list[bit] bits ) {
-  // TODO: Not fully formal
+Float invFbits( list[bit] bits ) {
+  // TODO: Does not yet include NaN or inf
   int N = size( bits );
   int sign = bits[0];
   int exp = invIbits( bits[1..1+expon(N)] ) - fbias( N );
   int m = invIbits( bits[1+expon(N)..] );
-  return ( sign == 0 ? 1 : -1 ) * ( m * pow( 2.0, exp ) );
+  
+  if ( exp == pow2( expon( N ) ) - 1 ) {
+    if ( m == 0 ) {
+      return ( sign == 1 ) ? negative_infinity( ) : positive_infinity( );
+    } else {
+      return canonical_nan( );
+    }
+  }
+  
+  return fval( ( sign == 0 ? 1 : -1 ) * applyPower( m, exp ) );
 }
 
 // ### Function implementations
@@ -93,36 +112,6 @@ int ictz( int val, int N ) {
 // ipopcnt: number of 1 bits in
 int ipopcnt( 0 ) = 0;
 int ipopcnt( int val ) = ( val % 2 ) + ipopcnt( val / 2 );
-
-real truncf( real f ) {
-  int ival = toInt( f );
-  if ( ival == 0 ) {
-    if ( f >= 0 ) {
-      return 0.0;
-    } else {
-      return -0.0;
-    }
-  } else {
-    return toReal( ival );
-  }
-}
-
-real fnearest( real f ) {
-  int ival = toInt( f );
-  real frac = f - ival;
-      
-  if ( frac < 0.5 ) {
-    return toReal( ival );
-  } else if ( frac > 0.5 ) {
-    return toReal( ival + 1 );
-  } else { // if two values are equally near, return the even one
-    if ( ival % 2 == 0 ) {
-      return toReal( ival );
-    } else {
-      return toReal( ival + 1 );
-    }
-  }
-}
 
 int idiv_u( int a, int b, int N ) {
   if ( b == 0 ) {
@@ -153,9 +142,9 @@ int irem_s( int i1, int i2, int N ) {
   if ( i2 == 0 ) {
     return 0; // undefined behaviour
   } else {
-    int j1 = signed( i1 );
-    int j2 = signed( i2 );
-    return invSigned( j1 - j2 * ( j1 / j2 ) );
+    int j1 = signed( i1, N );
+    int j2 = signed( i2, N );
+    return invSigned( j1 - j2 * ( j1 / j2 ), N );
   }
 }
 
@@ -183,39 +172,12 @@ int ishr_s( int i1, int i2, int N )
        list[bit] i1bits := ibits( i1, N ),
        d0 := head( i1bits );
 
-int rotl( int i1, int i2, int N )
+int irotl( int i1, int i2, int N )
   = invIbits( i1bits[k..] + i1bits[..k] )
   when k := i2 % N,
        i1bits := ibits( i1, N );
 
-int rotr( int i1, int i2, int N )
+int irotr( int i1, int i2, int N )
   = invIbits( i1bits[N-k..] + i1bits[..N-k] )
   when k := i2 % N,
        i1bits := ibits( i1, N );
-
-// copies i2's sign to i1
-real fcopysign( real i1, real i2 ) {
-  if ( ( i1 >= 0 ) == ( i2 >= 0 ) ) {
-    return i1;
-  } else {
-    return -i1;
-  }
-}
-
-int trunc_u( real f, int destN ) {
-  int i = toInt( f );
-  if ( i >= pow2( destN ) ) {
-    return 0; // undefined
-  } else {
-    return i;
-  }
-}
-
-int trunc_s( real f, int destN ) {
-  int i = toInt( f );
-  if ( i >= pow2( destN - 1 ) || i < -pow2( destN - 1 ) ) {
-    return 0; // undefined
-  } else {
-    return i;
-  }
-}

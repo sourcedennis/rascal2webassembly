@@ -169,11 +169,11 @@ FuncType desugar( (FuncType)`(func <Param* ps> <Result* rs>)` )
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(table (export <Name name>) <TableFields fields>)` )
   = <desc3, (ModuleField)`(export <Name name> (table <TableIdx id>))` + desFields>
   when <desc2,id> := getFreshId( desc ),
-       <desc3,desFields> := desugar( desc2, (ModuleField)`(func <Id id> <FuncFields fields>)` );
+       <desc3,desFields> := desugar( desc2, (ModuleField)`(table <Id id> <TableFields fields>)` );
   
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(table <Id id> (export <Name name>) <TableFields fields>)` )
   = <desc2, (ModuleField)`(export <Name name> (table <TableIdx id>))` + desugaredFields>
-  when <desc2, desugaredFields> := desugar( desc, (ModuleField)`(func <Id id> <FuncFields fields>)` );
+  when <desc2, desugaredFields> := desugar( desc, (ModuleField)`(table <Id id> <TableFields fields>)` );
 
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(table <Id? id> (import <Name modName> <Name tableName>) <TableType tableType>)` )
   = <desc, [ (ModuleField)`(import <Name modName> <Name tableName> (table <Id? id> <TableType tableType>))` ]>;
@@ -196,7 +196,7 @@ tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(mem
        <desc3,desFields> := desugar( desc2, (ModuleField)`(memory <Id id> <MemFields fields>)` );
   
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(memory <Id id> (export <Name name>) <MemFields fields>)` )
-  = <desc2, (ModuleField)`(export <Name name> (global <Id id>))` + desFields>
+  = <desc2, (ModuleField)`(export <Name name> (memory <Id id>))` + desFields>
   when <desc2, desFields> := desugar( desc, (ModuleField)`(memory <Id id> <MemFields fields>)` );
 
 tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(memory <Id? id> (import <Name modName> <Name globalName>) <MemType memType>)` )
@@ -211,7 +211,7 @@ tuple[ModuleDesc,list[ModuleField]] desugar( ModuleDesc desc, (ModuleField)`(mem
   when m := parse( #U32, toString( ceil( len( b ) / ( 64 * 1024.0 ) ) ) ),
        <desc2,desDataField> := desugar( desc, (ModuleField)`(data <Id id> (i32.const 0) <DataString b>)` );
 
-int len( (DataString)`<String* s>` ) = sum( [ len( x ) | x <- s ] );
+int len( (DataString)`<String* s>` ) = sum( [ 0 ] + [ len( x ) | x <- s ] );
 int len( String s ) = wasmStringUTF8Length( "<s>" );
 
 // ## Globals

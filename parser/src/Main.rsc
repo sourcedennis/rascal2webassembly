@@ -4,45 +4,81 @@ import IO;
 import Map;
 import ParseTree;
 import util::FileSystem;
+
 import lang::webassembly::Syntax;
-import lang::webassembly::ScriptSyntax;
 import lang::webassembly::ADT;
 import lang::webassembly::ConvertADT;
-import lang::webassembly::Desugar;
 import lang::webassembly::Execution;
+
+import lang::webassembly::ScriptSyntax;
+import lang::webassembly::ScriptADT;
+import lang::webassembly::ScriptConvertADT;
+import lang::webassembly::ScriptExecution;
+
+import lang::webassembly::Desugar;
 import Exception;
 import util::Math;
+
+// 3 mains are defined that test different things
+// - mainParse( ): Tests the parsing of the testsuite
+// - mainDesugar( ): Test the desugaring of the testsuite
+// - mainExecute( ): Tests execution of an arbitrary function
 
 start[WebAssembly] parseWasm( str s ) = parse( #start[WebAssembly], s );
 start[WebAssemblyScript] parseWasmScript( loc l ) = parse( #start[WebAssemblyScript], l );
 start[WebAssemblyScript] parseWasmScript( str s ) = parse( #start[WebAssemblyScript], s );
 
+void mainExecuteTestSuite( ) {
+  loc lTestSuite = |project://testsuite/|;
+  set[loc] lTestFiles = { f | f <- lTestSuite.ls, !isDirectory(f), f.extension == "wast" };
+  
+  //for ( f <- lTestFiles ) {
+    f = |project://testsuite/exports.wast|;
+    println( f );
+    
+    try {
+      scriptTree = parse( #start[WebAssemblyScript], f );
+      scriptTree = visit( scriptTree ) {
+      case Module m => desM when (start[WebAssembly])`<Module desM>` := desugar( (start[WebAssembly])`<Module m>` )
+      };
+      println( "Loaded" );
+      println( scriptTree );
+      runScript( toADT( scriptTree ) );
+    } catch e:StackOverflow( ): {
+      println( "StackOverflow" );
+    }
+    //} catch RuntimeException e: {
+    //  println( "Script Failed" );
+    //  println( e );
+    //}
+  //}
+}
+
 void mainExecute( ) {
   str s = "(module
           '  (memory (data \"Whitespace\"))
           '  (table $t anyfunc (elem $add $sub))
-          '  (global $g1 (mut i32) (i32.const 18))
           '  (start $first)
-          '  (func $add (param $a i32) (param $b i32) (result i32)
-          '    (i32.add (get_local $a) (get_local $b))
+          '  (func $add (param $a f32) (param $b f32) (result f32)
+          '    (f32.add (get_local $a) (get_local $b))
           '  )
-          '  (func $sub (param $a i32) (param $b i32) (result i32)
-          '    (i32.sub (get_local $a) (get_local $b))
+          '  (func $sub (param $a f32) (param $b f32) (result f32)
+          '    (f32.sub (get_local $a) (get_local $b))
           '  )
-          '  (func $first (result i32)
-          '    i32.const 5
-          '    i32.const 4
+          '  (func $first
+          '    f32.const 5
+          '    f32.const 4
           '    i32.const 0
-          '    call_indirect (param i32 i32) (result i32)
+          '    call_indirect (param f32 f32) (result f32)
           '    drop
           '  )
           ')";
   start[WebAssembly] concrete = parseWasm( s );
   start[WebAssembly] desugarConcrete = desugar( concrete );
-  println( desugarConcrete );
   tree = toADT( desugarConcrete );
   
-  config c = setupExecutionConfig( tree );
+  moduleinst modInst = setupModuleInstance( tree );
+  config c = setupExecutionConfig( tree, modInst, findStartFuncIdx( tree ), [] );
   println( stack2str( c.t.stack ) );
   
   while ( !isDone( c ) ) {
@@ -64,7 +100,7 @@ str stack2str( sev( v ) ) = "<v>";
 str stack2str( sei( i ) ) = "<i>";
 str stack2str( sec( c ) ) = "<c>";
 str stack2str( sel( retArity, _ ) ) = "#label(<retArity>)";
-str stack2str( sef( retArity, frame( locals, _ ) ) ) = "frame(<retArity>,<locals>)";
+str stack2str( sef( frame( locals, retArity, _ ) ) ) = "frame(<retArity>,<locals>)";
 str joinStr( [], str delim ) = "";
 str joinStr( [e], str delim ) = e;
 str joinStr( [e, *L], str delim ) = e + delim + joinStr( L, delim );

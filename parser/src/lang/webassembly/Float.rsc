@@ -20,6 +20,8 @@ data Float = fval( real r )
            | arbitrary_infinity( )
            ;
 
+Float Float_zero( ) = fval( 0.0 );
+
 Float toFloat( str s ) {
   FN tree = parse( #FN, s );
   
@@ -332,7 +334,7 @@ bool lt( positive_infinity( ), positive_infinity( ) ) = false;
 bool lt( _, positive_infinity( ) ) = true;
 bool lt( Float _, Float _ ) = false;
 
-int trunc_u( fval( float v ), int destN ) = trunc_u( v, destN );
+int trunc_u( fval( real v ), int destN ) = trunc_u( v, destN );
 int trunc_u( Float f, int destN ) = 0; // undefined
 
 int trunc_u( real f, int destN ) {
@@ -344,7 +346,7 @@ int trunc_u( real f, int destN ) {
   }
 }
 
-int trunc_s( fval( float v ), int destN ) = trunc_s( v, destN );
+int trunc_s( fval( real v ), int destN ) = trunc_s( v, destN );
 int trunc_s( Float f, int destN ) = 0; // undefined
 
 int trunc_s( real f, int destN ) {

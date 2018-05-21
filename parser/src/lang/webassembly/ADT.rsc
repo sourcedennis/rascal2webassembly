@@ -1,10 +1,33 @@
 module lang::webassembly::ADT
 
+import lang::webassembly::Float;
+
+data MODULE = \module( list[FUNCTYPE] types,
+                       list[FUNC] funcs,
+                       list[TABLE] tables,
+                       list[MEM] mems,
+                       list[GLOBAL] globals,
+                       list[ELEM] elems,
+                       list[DATA] \data,
+                       START \start,
+                       list[IMPORT] imports,
+                       list[EXPORT] exports )
+            | \module( list[FUNCTYPE] types,
+                       list[FUNC] funcs,
+                       list[TABLE] tables,
+                       list[MEM] mems,
+                       list[GLOBAL] globals,
+                       list[ELEM] elems,
+                       list[DATA] \data,
+                       list[IMPORT] imports,
+                       list[EXPORT] exports )
+            ;
+            
 data VALTYPE = i32( ) | i64( ) | f32( ) | f64( );
 
 data RESULTTYPE = resulttype( list[VALTYPE] );
 
-data FUNCTYPE = functype( list[VALTYPE] input, list[VALTYPE] result );
+data FUNCTYPE = functype( list[VALTYPE] params, list[VALTYPE] results );
 
 data LIMITS = limits( int min, int max )
             | limits( int min )
@@ -24,8 +47,8 @@ data MUT = const( )
 
 data INSTR = i32_const( int ival )
            | i64_const( int ival )
-           | f32_const( real fval )
-           | f64_const( real fval )
+           | f32_const( Float fval )
+           | f64_const( Float fval )
            // iunop
            | i32_clz( )
            | i32_ctz( )
@@ -208,27 +231,6 @@ data INSTR = i32_const( int ival )
 
 data EXPR = expr( list[INSTR] );
 
-data MODULE = \module( list[FUNCTYPE] types,
-                       list[FUNC] funcs,
-                       list[TABLE] tables,
-                       list[MEM] mems,
-                       list[GLOBAL] globals,
-                       list[ELEM] elems,
-                       list[DATA] \data,
-                       START \start,
-                       list[IMPORT] imports,
-                       list[EXPORT] exports )
-            | \module( list[FUNCTYPE] types,
-                       list[FUNC] funcs,
-                       list[TABLE] tables,
-                       list[MEM] mems,
-                       list[GLOBAL] globals,
-                       list[ELEM] elems,
-                       list[DATA] \data,
-                       list[IMPORT] imports,
-                       list[EXPORT] exports )
-            ;
-
 alias TYPEIDX = int;
 alias FUNCIDX = int;
 alias TABLEIDX = int;
@@ -242,7 +244,7 @@ alias byte = int;
 alias NAME = str;
 
 // The locals are the local variables only. Excludes the parameters
-data FUNC = func( TYPEIDX, list[VALTYPE] locals, EXPR body );
+data FUNC = func( TYPEIDX typeIdx, list[VALTYPE] locals, EXPR body );
 data TABLE = table( TABLETYPE \type );
 data MEM = mem( MEMTYPE \type );
 data GLOBAL = global( GLOBALTYPE \type, EXPR init );

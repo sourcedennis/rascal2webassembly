@@ -6,6 +6,8 @@ import String;
 import lang::webassembly::ADT;
 import lang::webassembly::Syntax;
 import lang::webassembly::String2UTF8;
+import lang::webassembly::Operations;
+import lang::webassembly::Float;
 import ParseTree;
 
 MODULE toADT( (start[WebAssembly])`<Module m>` ) = toADT( m );
@@ -66,16 +68,17 @@ DATA toADT( IdContext ctx, (Data)`(data <MemIdx idx> (offset <Expr offsetExpr>) 
 
 START toADT( IdContext ctx, (Start)`(start <FuncIdx idx>)` ) = \start( getIndex( ctx, idx ) );
 
-// TODO: Maybe convert <modName> and <importName> into UTF-8 strings, instead of raw WASM Strings
 IMPORT toADT( IdContext ctx, (Import)`(import <Name modName> <Name importName> <ImportDesc desc>)` )
-  = \import( "<modName>", "<importName>", toADT( ctx, desc ) );
+  = \import( toADT( modName ), toADT( importName ), toADT( ctx, desc ) );
+
+str toADT( Name n ) = toPayload( "<n>" );
 
 IMPORTDESC toADT( IdContext ctx, (ImportDesc)`(func <Id? id> (type <TypeIdx idx>) <Param* ps> <Result* rs>)` ) = importdesc_func( getIndex( ctx, idx ) );
 IMPORTDESC toADT( IdContext ctx, (ImportDesc)`(table <Id? id> <TableType t>)` ) = importdesc_table( toADT( t ) );
 IMPORTDESC toADT( IdContext ctx, (ImportDesc)`(memory <Id? id> <MemType t>)` ) = importdesc_mem( toADT( t ) );
 IMPORTDESC toADT( IdContext ctx, (ImportDesc)`(global <Id? id> <GlobalType t>)` ) = importdesc_global( toADT( t ) );
 
-EXPORT toADT( IdContext ctx, (Export)`(export <Name name> <ExportDesc desc>)` ) = export( "<name>", toADT( ctx, desc ) );
+EXPORT toADT( IdContext ctx, (Export)`(export <Name name> <ExportDesc desc>)` ) = export( toADT( name ), toADT( ctx, desc ) );
 
 EXPORTDESC toADT( IdContext ctx, (ExportDesc)`(func <FuncIdx idx>)` ) = exportdesc_func( getIndex( ctx, idx ) );
 EXPORTDESC toADT( IdContext ctx, (ExportDesc)`(table <TableIdx idx>)` ) = exportdesc_table( getIndex( ctx, idx ) );
@@ -94,7 +97,7 @@ VALTYPE toADT( (ValType)`f64` ) = f64( );
 
 FUNC toADT( ctx:idContext( types, _, _, _, _, _, _, _, _, _ ), (Func)`(func <Id? _> (type <TypeIdx idx>) <Param* ps> <Result* rs> <Local* locals> <Instr* instrs>)` )
   // Note that the 'ctx2' and 'ctx3' contain the parameters as locals, while the 'adtLocals' does not
-  = func( toInt( "<idx>" ), adtLocals, expr( [ toADT(ctx3, i) | i <- instrs ] ) )
+  = func( getIndex( ctx, idx ), adtLocals, expr( [ toADT(ctx3, i) | i <- instrs ] ) )
   when typeIdx := getIndex( ctx, idx ),
        <ctx2,adtParams> := toADTAsLocals( ctx, ps ),
        <ctx3,adtLocals> := toADT( ctx2, locals );
@@ -149,10 +152,10 @@ tuple[int,int] parseMemArg( (MemArg)`<Offset offset>`, int naturalAlignment ) = 
 tuple[int,int] parseMemArg( (MemArg)`<Align align>`, int naturalAlignment ) = < 0, parseAlign( align ) >;
 tuple[int,int] parseMemArg( (MemArg)`<Offset offset> <Align align>`, int naturalAlignment ) = < parseOffset( offset ), parseAlign( align ) >;
 
-INSTR toADT( IdContext ctx, (Instr)`i32.const <I32 val>` ) = i32_const( toInt( "<val>" ) );
-INSTR toADT( IdContext ctx, (Instr)`i64.const <I64 val>` ) = i64_const( toInt( "<val>" ) );
-INSTR toADT( IdContext ctx, (Instr)`f32.const <F32 val>` ) = f32_const( toReal( "<val>" ) );
-INSTR toADT( IdContext ctx, (Instr)`f64.const <F64 val>` ) = f64_const( toReal( "<val>" ) );
+INSTR toADT( IdContext ctx, (Instr)`i32.const <I32 val>` ) = i32_const( invSigned( toInt( "<val>" ), 32 ) );
+INSTR toADT( IdContext ctx, (Instr)`i64.const <I64 val>` ) = i64_const( invSigned( toInt( "<val>" ), 64 ) );
+INSTR toADT( IdContext ctx, (Instr)`f32.const <F32 val>` ) = f32_const( toFloat( "<val>" ) );
+INSTR toADT( IdContext ctx, (Instr)`f64.const <F64 val>` ) = f64_const( toFloat( "<val>" ) );
 // iunop
 INSTR toADT( IdContext ctx, (Instr)`i32.clz` ) = i32_clz( );
 INSTR toADT( IdContext ctx, (Instr)`i32.ctz` ) = i32_ctz( );
