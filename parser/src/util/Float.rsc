@@ -1,11 +1,18 @@
-module lang::webassembly::Float
+module util::Float
 
-import lang::webassembly::FloatSyntax;
+//import lang::webassembly::FloatSyntax;
 import ParseTree;
 import Exception;
 import String;
 import util::Math;
 import IO; // temp
+
+import util::LittleEndian;
+
+// This is an approximate implementation of floating points.
+// It does not correspond fully to the semantics of IEEE 754-2008
+// though, deviation occur only with NaN and infinite values, and
+// some rounding errors
 
 data Float = fval( real r )
            | canonical_nan( )
@@ -22,83 +29,17 @@ data Float = fval( real r )
 
 Float Float_zero( ) = fval( 0.0 );
 
-Float toFloat( str s ) {
-  FN tree = parse( #FN, s );
-  
-  switch ( tree ) {
-  case (FN)`<SN sn>`: return fval( toReal( toInt( sn ) ) ); // this is a normal decimal/hexadecimal integer
-  case (FN)`-inf`: return negative_infinity( );
-  case (FN)`+inf`: return positive_infinity( );
-  case (FN)`inf`: return positive_infinity( );
-  case (FN)`<Sign _>nan`: return canonical_nan( );
-  case (FN)`<Sign _><ArithmeticNan _>`: return arithmetic_nan( );
-  case (FN)`+<FNMag x>`: return toFloat( x );
-  case (FN)`<FNMag x>`: return toFloat( x );
-  case (FN)`-<FNMag x>`: {
-    if ( fval( v ) := toFloat( x ) ) {
-      return fval( -v );
-    }
-  }
-  };
-  
-  println( "Failed to parse Float" );
-  return arithmetic_nan( );
-}
-
-int toInt( SN sn ) = toInt( replaceAll( "<sn>", "_", "" ) );
-
-Float toFloat( (FNMag)`<Float f>` ) = fval( toReal( replaceAll( "<f>", "_", "" ) ) );
-Float toFloat( (FNMag)`0x<HexNum n>.<HexFrac f>` ) {
-  magnitude = toReal( n ) + toFrac( f );
-  return fval( magnitude );
-}
-Float toFloat( (FNMag)`0x<HexNum n>P<Sign s><Num p>` ) = toFloat( (FNMag)`0x<HexNum n>p<Sign s><Num p>` );
-Float toFloat( (FNMag)`0x<HexNum n>p<Sign s><Num p>` ) {
-  magnitude = toReal( n );
-  power = toInt( replaceAll( "<s><p>", "_", "" ) );
-  return fval( applyPower( magnitude, power ) );
-}
-Float toFloat( (FNMag)`0x<HexNum n>.<HexFrac f>P<Sign s><Num p>` ) = toFloat( (FNMag)`0x<HexNum n>.<HexFrac f>p<Sign s><Num p>` );
-Float toFloat( (FNMag)`0x<HexNum n>.<HexFrac f>p<Sign s><Num p>` ) {
-  magnitude = toReal( n ) + toFrac( f );
-  power = toInt( replaceAll( "<s><p>", "_", "" ) );
-  return fval( applyPower( magnitude, power ) );
-}
-
-real toReal( HexNum n ) = toReal( toInt( replaceAll( "0x<n>", "_", "" ) ) );
-
-// This function is introduced to avoid rounding errors from "magnitude * pow( 2.0, power )"
-real applyPower( real magnitude, int power ) {
-  if ( power > 0 ) {
-    for ( i <- [0..power] ) {
-      magnitude = magnitude * 2;
-    }
-  } else if ( power < 0 ) {
-    for ( i <- [0..-power] ) {
-      magnitude = magnitude / 2;
-    }
-  }
-  return magnitude;
-}
-
-// This function is introduced to avoid rounding errors from "f / pow(16.0, size(f))"
-real toFrac( HexFrac f )
-  = ( size( fStr ) == 0 ? 0.0 : toFrac( split( "", fStr ) ) )
-  when fStr := replaceAll( "<f>", "_", "" );
-real toFrac( list[str] x:[c, *L] ) = ( 1.0 / 16.0 ) * ( toReal( toInt( "0x<c>" ) ) + toFrac( L ) );
-real toFrac( list[str] x:[] ) = 0.0;
-
 // These operators are not formally implemented following the spec
 //   mainly done intuitively, while trying to pass the test cases.
 
-private bool isPositive( fval( v ) ) = ( v > 0 );
-private bool isPositive( positive_infinity( ) ) = true;
+private bool isPositive( Float f:fval( v ) ) = ( v > 0 );
+private bool isPositive( Float f:positive_infinity( ) ) = true;
 private bool isPositive( Float f ) = false;
 
-private Float flipSign( positive_infinity( ) ) = negative_infinity( );
-private Float flipSign( negative_infinity( ) ) = positive_infinity( );
-private Float flipSign( fval( v ) ) = fval( -v );
-private Float flipSign( Float f ) = f;
+private Float flipSign( Float f:positive_infinity( ) ) = negative_infinity( );
+private Float flipSign( Float f:negative_infinity( ) ) = positive_infinity( );
+private Float flipSign( Float f:fval( v ) ) = fval( -v );
+private Float flipSign( Float f:Float f ) = f;
 
 // copies f2's sign to f1
 Float fcopysign( Float f1, Float f2 ) {
@@ -202,6 +143,8 @@ Float add( negative_infinity( ), negative_infinity( ) ) = negative_infinity( );
 Float add( positive_infinity( ), positive_infinity( ) ) = positive_infinity( );
 Float add( negative_infinity( ), positive_infinity( ) ) = fval( 0.0 );
 Float add( positive_infinity( ), negative_infinity( ) ) = fval( 0.0 );
+Float add( canonical_nan( ), _ ) = canonical_nan( );
+Float add( _, canonical_nan( ) ) = canonical_nan( );
 
 Float subtract( fval( a ), fval( b ) ) = fval( a - b );
 Float subtract( positive_infinity( ), fval( _ ) ) = positive_infinity( );
@@ -251,8 +194,8 @@ int fbias( int N ) = pow2( expon( N ) - 1 ) - 1;
 int pow2( int N ) = toInt( pow( 2, N ) );
 int pow10( int N ) = toInt( pow( 10, N ) );
 
-Float clean( f:fval( a ), int N ) {
-  <sig,expo> = estimateFloatProps( a, N );
+Float clean( int N, f:fval( a ) ) {
+  <sig,expo> = estimateFloatProps( N, a );
     
   if ( overflows( <sig,expo>, N ) ) {
     return a > 0 ? positive_infinity( ) : negative_infinity( );
@@ -270,14 +213,14 @@ Float clean( f:fval( a ), int N ) {
     return fval( v );
   }
 }
-Float clean( Float f, int N ) = f;
+Float clean( int N, Float f ) = f;
 
 bool overflows( real f, int N ) = overflows( estimateFloatProps( f, N ) );
 bool overflows( <int sig,int expo>, int N )
   //= ( abs( sig ) > pow2( signif( N ) ) || expo + fbias( N ) + signif( N ) >= pow2( expon( N ) ) );
   = ( abs( sig ) >= pow2( signif( N ) ) || expo + fbias( N ) + signif( N ) >= pow2( expon( N ) ) );
 
-tuple[int signif,int expon] estimateFloatProps( real f, int N ) {
+tuple[int signif,int expon] estimateFloatProps( int N, real f ) {
   bool isPositive = ( f > 0 );
   f = abs( f );
   
@@ -316,6 +259,8 @@ bool eq( positive_infinity( ), arbitrary_infinity( ) ) = true;
 bool eq( negative_infinity( ), arbitrary_infinity( ) ) = true;
 bool eq( Float a, Float b ) = ( a == b );
 
+bool ne( Float a, Float b ) = !eq( a, b );
+
 bool ge( fval( a ), fval( b ) ) = ( a >= b );
 bool ge( positive_infinity( ), _ ) = true;
 bool ge( Float _, Float _ ) = false;
@@ -334,10 +279,10 @@ bool lt( positive_infinity( ), positive_infinity( ) ) = false;
 bool lt( _, positive_infinity( ) ) = true;
 bool lt( Float _, Float _ ) = false;
 
-int trunc_u( fval( real v ), int destN ) = trunc_u( v, destN );
-int trunc_u( Float f, int destN ) = 0; // undefined
+int trunc_u( int destN, fval( real v ) ) = trunc_u( destN, v );
+int trunc_u( int destN, Float f ) = 0; // undefined
 
-int trunc_u( real f, int destN ) {
+int trunc_u( int destN, real f ) {
   int i = toInt( f );
   if ( i >= pow2( destN ) ) {
     return 0; // undefined
@@ -346,14 +291,84 @@ int trunc_u( real f, int destN ) {
   }
 }
 
-int trunc_s( fval( real v ), int destN ) = trunc_s( v, destN );
-int trunc_s( Float f, int destN ) = 0; // undefined
+int trunc_s( int destN, fval( real v ) ) = trunc_s( destN, v );
+int trunc_s( int destN, Float f ) = 0; // undefined
 
-int trunc_s( real f, int destN ) {
+int trunc_s( int destN, real f ) {
   int i = toInt( f );
   if ( i >= pow2( destN - 1 ) || i < -pow2( destN - 1 ) ) {
     return 0; // undefined
   } else {
     return i;
   }
+}
+
+int signif( 32 ) = 23;
+int signif( 64 ) = 52;
+int expon( 32 ) = 8;
+int expon( 64 ) = 11;
+int fbias( int N ) = pow2( expon( N ) - 1 ) - 1;
+
+alias bit = int;
+
+list[bit] fbits( int N:32, canonical_nan( ) ) = ibits( 32, 0x7fc00000 );
+list[bit] fbits( int N:64, canonical_nan( ) )= ibits( 64, 0x7ff8000000000000 );
+list[bit] fbits( int N:32, arithmetic_nan( ) ) = ibits( 32, 0x7fc00000 );
+list[bit] fbits( int N:64, arithmetic_nan( ) )= ibits( 64, 0x7ff8000000000000 );
+list[bit] fbits( int N:32, positive_infinity( ) ) = ibits( 32, 0x7f800000 );
+list[bit] fbits( int N:64, positive_infinity( ) )= ibits( 64, 0x7ff0000000000000 );
+list[bit] fbits( int N:32, negative_infinity( ) ) = ibits( 32, 0xff800000 );
+list[bit] fbits( int N:64, negative_infinity( ) )= ibits( 64, 0xfff0000000000000 );
+list[bit] fbits( int N, arbitrary_infinity( ) ) = fbits( N, positive_infinity( ) );
+list[bit] fbits( int N, arbitrary_infinity( ) ) = fbits( N, positive_infinity( ) );
+list[bit] fbits( int N, fval( v ) ) {
+  <m,ex> = estimateFloatProps( N, v );
+  return [ v >= 0 ? 0 : 1 ] + ibits( expon( N ), ex + fbias( N ) + signif( N ) ) + ibits( signif( N ), abs( m ) );
+}
+
+public bytes toBytes( int numBytes, Float f ) {
+  return bytesLE( numBytes, invIbits( fbits( numBytes * 8, f ) ) );
+}
+
+public Float toFloat( bytes b ) {
+  bits bs = ibits( size( b ) * 8, intLE( b ) );
+  return invFbits( bs );
+}
+
+alias bit = int;
+alias bits = list[bit];
+
+private bits ibits( int N:0, int a ) = [];
+private bits ibits( int N, int a ) = ibits( N - 1, a / 2 ) + [ a % 2 ];
+private int invIbits( bits _:[] ) = 0;
+private int invIbits( bits _:[*bs, bit b] ) = invIbits( bs ) * 2 + b;
+
+Float invFbits( list[bit] bits ) {
+  int N = size( bits );
+  int sign = bits[0];
+  int exp = invIbits( bits[1..1+expon(N)] ) - fbias( N ) - signif( N );
+  int m = invIbits( bits[1+expon(N)..] );
+  
+  if ( exp == pow2( expon( N ) ) - 1 ) {
+    if ( m == 0 ) {
+      return ( sign == 1 ) ? negative_infinity( ) : positive_infinity( );
+    } else {
+      return canonical_nan( );
+    }
+  }
+  
+  return fval( ( sign == 0 ? 1 : -1 ) * applyPower( toReal( m ), exp ) );
+}
+
+real applyPower( real m, int exp ) {
+  if ( exp < 0 ) {
+    for ( i <- [0..-exp] ) {
+      m = m * 0.5;
+    }
+  } else if ( exp > 0 ) {
+    for ( i <- [0..exp] ) {
+      m = m * 2;
+    }
+  }
+  return m;
 }

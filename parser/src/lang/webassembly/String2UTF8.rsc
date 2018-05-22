@@ -8,8 +8,10 @@ public alias byte = int;
 public list[byte] wasmStringToUTF8Bytes( str s ) {
   String tree = parse( #String, s );
   list[byte] utf8Bytes = [];
-  visit ( tree ) {
-  case StringElem e: utf8Bytes += toUTF8Bytes( e );
+  top-down-break visit ( tree ) {
+  case StringElem e: {
+    utf8Bytes += toUTF8Bytes( e );
+  }
   }
   return utf8Bytes;
 }
@@ -27,7 +29,7 @@ public int wasmStringUTF8Length( str s ) {
 public str toPayload( str s ) {
   String tree = parse( #String, s );
   str payload = "";
-  visit ( tree ) {
+  top-down-break visit ( tree ) {
   case StringElem e: payload += toPayload( e );
   }
   return payload;
@@ -40,7 +42,7 @@ private list[byte] toUTF8Bytes( (StringElem)`\\"` ) = [ charAt( "\"", 0 ) ];
 private list[byte] toUTF8Bytes( (StringElem)`\\'` ) = [ charAt( "\'", 0 ) ];
 private list[byte] toUTF8Bytes( (StringElem)`\\\\` ) = [ charAt( "\\", 0 ) ];
 private list[byte] toUTF8Bytes( (StringElem)`<HexEscape e>` ) = unicodeCharToUTF8( hex2int( substring( "<e>", 2 ) ) );
-private list[byte] toUTF8Bytes( (StringElem)`\\<HexDigit d1><HexDigit d2>` ) = unicodeCharToUTF8( toInt( "0x<d1><d2>" ) );
+private list[byte] toUTF8Bytes( (StringElem)`\\<HexDigit d1><HexDigit d2>` ) = [ toInt( "0x<d1><d2>" ) ];
 private default list[byte] toUTF8Bytes( StringElem e ) = unicodeCharToUTF8( charAt( "<e>", 0 ) );
 
 private str toPayload( (StringElem)`\\t` ) = "\t";
@@ -50,7 +52,7 @@ private str toPayload( (StringElem)`\\"` ) = "\"";
 private str toPayload( (StringElem)`\\'` ) = "\'";
 private str toPayload( (StringElem)`\\\\` ) = "\\";
 private str toPayload( (StringElem)`<HexEscape e>` ) = stringChars( [ hex2int( substring( "<e>", 2 ) ) ] );
-private str toPayload( (StringElem)`\\<HexDigit d1><HexDigit d2>` ) = stringChars( [ unicodeCharToUTF8( toInt( "0x<d1><d2>" ) ) ] );
+private str toPayload( (StringElem)`\\<HexDigit d1><HexDigit d2>` ) = stringChars( [ toInt( "0x<d1><d2>" ) ] );
 private default str toPayload( StringElem e ) = "<e>";
 
 private list[byte] unicodeCharToUTF8( int unicode ) {

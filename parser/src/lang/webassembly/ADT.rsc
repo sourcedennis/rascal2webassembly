@@ -1,6 +1,6 @@
 module lang::webassembly::ADT
 
-import lang::webassembly::Float;
+import util::Float;
 
 data MODULE = \module( list[FUNCTYPE] types,
                        list[FUNC] funcs,
@@ -229,7 +229,7 @@ data INSTR = i32_const( int ival )
            | call_indirect( TYPEIDX ti )
            ;
 
-data EXPR = expr( list[INSTR] );
+data EXPR = expr( list[INSTR] instrs );
 
 alias TYPEIDX = int;
 alias FUNCIDX = int;

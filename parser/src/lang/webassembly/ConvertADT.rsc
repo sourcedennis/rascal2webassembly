@@ -6,8 +6,8 @@ import String;
 import lang::webassembly::ADT;
 import lang::webassembly::Syntax;
 import lang::webassembly::String2UTF8;
-import lang::webassembly::Operations;
-import lang::webassembly::Float;
+import lang::webassembly::execution::Numerics; // for invSigned( )
+import lang::webassembly::ToFloat;
 import ParseTree;
 
 MODULE toADT( (start[WebAssembly])`<Module m>` ) = toADT( m );
@@ -152,8 +152,8 @@ tuple[int,int] parseMemArg( (MemArg)`<Offset offset>`, int naturalAlignment ) = 
 tuple[int,int] parseMemArg( (MemArg)`<Align align>`, int naturalAlignment ) = < 0, parseAlign( align ) >;
 tuple[int,int] parseMemArg( (MemArg)`<Offset offset> <Align align>`, int naturalAlignment ) = < parseOffset( offset ), parseAlign( align ) >;
 
-INSTR toADT( IdContext ctx, (Instr)`i32.const <I32 val>` ) = i32_const( invSigned( toInt( "<val>" ), 32 ) );
-INSTR toADT( IdContext ctx, (Instr)`i64.const <I64 val>` ) = i64_const( invSigned( toInt( "<val>" ), 64 ) );
+INSTR toADT( IdContext ctx, (Instr)`i32.const <I32 val>` ) = i32_const( invSigned( 32, toInt( replaceAll( "<val>", "_", "" ) ) ) );
+INSTR toADT( IdContext ctx, (Instr)`i64.const <I64 val>` ) = i64_const( invSigned( 64, toInt( replaceAll( "<val>", "_", "" ) ) ) );
 INSTR toADT( IdContext ctx, (Instr)`f32.const <F32 val>` ) = f32_const( toFloat( "<val>" ) );
 INSTR toADT( IdContext ctx, (Instr)`f64.const <F64 val>` ) = f64_const( toFloat( "<val>" ) );
 // iunop

@@ -19,40 +19,8 @@ import lang::webassembly::Desugar;
 import Exception;
 import util::Math;
 
-// 3 mains are defined that test different things
-// - mainParse( ): Tests the parsing of the testsuite
-// - mainDesugar( ): Test the desugaring of the testsuite
-// - mainExecute( ): Tests execution of an arbitrary function
-
-start[WebAssembly] parseWasm( str s ) = parse( #start[WebAssembly], s );
-start[WebAssemblyScript] parseWasmScript( loc l ) = parse( #start[WebAssemblyScript], l );
-start[WebAssemblyScript] parseWasmScript( str s ) = parse( #start[WebAssemblyScript], s );
-
-void mainExecuteTestSuite( ) {
-  loc lTestSuite = |project://testsuite/|;
-  set[loc] lTestFiles = { f | f <- lTestSuite.ls, !isDirectory(f), f.extension == "wast" };
-  
-  //for ( f <- lTestFiles ) {
-    f = |project://testsuite/exports.wast|;
-    println( f );
-    
-    try {
-      scriptTree = parse( #start[WebAssemblyScript], f );
-      scriptTree = visit( scriptTree ) {
-      case Module m => desM when (start[WebAssembly])`<Module desM>` := desugar( (start[WebAssembly])`<Module m>` )
-      };
-      println( "Loaded" );
-      println( scriptTree );
-      runScript( toADT( scriptTree ) );
-    } catch e:StackOverflow( ): {
-      println( "StackOverflow" );
-    }
-    //} catch RuntimeException e: {
-    //  println( "Script Failed" );
-    //  println( e );
-    //}
-  //}
-}
+// This is the old main. DOES NOT WORK. DO NOT USE.
+// It will be separated in the future.
 
 void mainExecute( ) {
   str s = "(module
