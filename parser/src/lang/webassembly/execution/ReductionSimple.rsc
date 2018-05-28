@@ -73,15 +73,25 @@ private Maybe[thread] reduce( [ *S, sev( i64( ival1 ) ), sev( i64( ival2 ) ) ], 
 private Maybe[thread] reduce( [ *S, sev( i32( ival1 ) ), sev( i32( ival2 ) ) ], [ sei( i32_mul( ) ), *I ] ) = just( [ *S, sev( i32( imul( 32, ival1, ival2 ) ) ) ], I );
 private Maybe[thread] reduce( [ *S, sev( i64( ival1 ) ), sev( i64( ival2 ) ) ], [ sei( i64_mul( ) ), *I ] ) = just( [ *S, sev( i64( imul( 64, ival1, ival2 ) ) ) ], I );
 // div_u
+private Maybe[thread] reduce( [ *S, sev( i32( ival1 ) ), sev( i32( 0 ) ) ], [ sei( i32_div_u( ) ), *I ] ) = just( [], [ sec( trap( ) ) ] );
+private Maybe[thread] reduce( [ *S, sev( i64( ival1 ) ), sev( i64( 0 ) ) ], [ sei( i64_div_u( ) ), *I ] ) = just( [], [ sec( trap( ) ) ] );
 private Maybe[thread] reduce( [ *S, sev( i32( ival1 ) ), sev( i32( ival2 ) ) ], [ sei( i32_div_u( ) ), *I ] ) = just( [ *S, sev( i32( idiv_u( 32, ival1, ival2 ) ) ) ], I );
 private Maybe[thread] reduce( [ *S, sev( i64( ival1 ) ), sev( i64( ival2 ) ) ], [ sei( i64_div_u( ) ), *I ] ) = just( [ *S, sev( i64( idiv_u( 64, ival1, ival2 ) ) ) ], I );
 // div_s
+private Maybe[thread] reduce( [ *S, sev( i32( ival1 ) ), sev( i32( 0 ) ) ], [ sei( i32_div_s( ) ), *I ] ) = just( [], [ sec( trap( ) ) ] );
+private Maybe[thread] reduce( [ *S, sev( i64( ival1 ) ), sev( i64( 0 ) ) ], [ sei( i64_div_s( ) ), *I ] ) = just( [], [ sec( trap( ) ) ] );
+private Maybe[thread] reduce( [ *S, sev( i32( 0x80000000 ) ), sev( i32( 0xFFFFFFFF ) ) ], [ sei( i32_div_s( ) ), *I ] ) = just( [], [ sec( trap( ) ) ] );
+private Maybe[thread] reduce( [ *S, sev( i64( 0x8000000000000000 ) ), sev( i64( 0xFFFFFFFFFFFFFFFF ) ) ], [ sei( i64_div_s( ) ), *I ] ) = just( [], [ sec( trap( ) ) ] );
 private Maybe[thread] reduce( [ *S, sev( i32( ival1 ) ), sev( i32( ival2 ) ) ], [ sei( i32_div_s( ) ), *I ] ) = just( [ *S, sev( i32( idiv_s( 32, ival1, ival2 ) ) ) ], I );
 private Maybe[thread] reduce( [ *S, sev( i64( ival1 ) ), sev( i64( ival2 ) ) ], [ sei( i64_div_s( ) ), *I ] ) = just( [ *S, sev( i64( idiv_s( 64, ival1, ival2 ) ) ) ], I );
 // rem_u
+private Maybe[thread] reduce( [ *S, sev( i32( ival1 ) ), sev( i32( 0 ) ) ], [ sei( i32_rem_u( ) ), *I ] ) = just( [], [ sec( trap( ) ) ] );
+private Maybe[thread] reduce( [ *S, sev( i64( ival1 ) ), sev( i64( 0 ) ) ], [ sei( i64_rem_u( ) ), *I ] ) = just( [], [ sec( trap( ) ) ] );
 private Maybe[thread] reduce( [ *S, sev( i32( ival1 ) ), sev( i32( ival2 ) ) ], [ sei( i32_rem_u( ) ), *I ] ) = just( [ *S, sev( i32( irem_u( 32, ival1, ival2 ) ) ) ], I );
 private Maybe[thread] reduce( [ *S, sev( i64( ival1 ) ), sev( i64( ival2 ) ) ], [ sei( i64_rem_u( ) ), *I ] ) = just( [ *S, sev( i64( irem_u( 64, ival1, ival2 ) ) ) ], I );
 // rem_s
+private Maybe[thread] reduce( [ *S, sev( i32( ival1 ) ), sev( i32( 0 ) ) ], [ sei( i32_rem_s( ) ), *I ] ) = just( [], [ sec( trap( ) ) ] );
+private Maybe[thread] reduce( [ *S, sev( i64( ival1 ) ), sev( i64( 0 ) ) ], [ sei( i64_rem_s( ) ), *I ] ) = just( [], [ sec( trap( ) ) ] );
 private Maybe[thread] reduce( [ *S, sev( i32( ival1 ) ), sev( i32( ival2 ) ) ], [ sei( i32_rem_s( ) ), *I ] ) = just( [ *S, sev( i32( irem_s( 32, ival1, ival2 ) ) ) ], I );
 private Maybe[thread] reduce( [ *S, sev( i64( ival1 ) ), sev( i64( ival2 ) ) ], [ sei( i64_rem_s( ) ), *I ] ) = just( [ *S, sev( i64( irem_s( 64, ival1, ival2 ) ) ) ], I );
 // and
@@ -198,21 +208,37 @@ private Maybe[thread] reduce( [ *S, sev( i32( ival ) ) ], [ sei( i64_extend_u_i3
 // i64_extend_s_i32
 private Maybe[thread] reduce( [ *S, sev( i32( ival ) ) ], [ sei( i64_extend_s_i32( ) ), *I ] ) = just( [ *S, sev( i64( invSigned( 64, signed( 32, ival ) ) ) ) ], I );
 // i32_trunc_u_f32
-private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i32_trunc_u_f32( ) ), *I ] ) = just( [ *S, sev( i32( invSigned( 32, trunc_u( 32, fval ) ) ) ) ], I );
+private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i32_trunc_u_f32( ) ), *I ] ) = just( [ *S, sev( i32( invSigned( 32, res ) ) ) ], I )
+  when just( res ) := trunc_u( 32, fval );
+private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i32_trunc_u_f32( ) ), *I ] ) = just( [ ], [ sec( trap( ) ) ] );
 // i32_trunc_s_f32
-private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i32_trunc_s_f32( ) ), *I ] ) = just( [ *S, sev( i32( invSigned( 32, trunc_s( 32, fval ) ) ) ) ], I );
+private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i32_trunc_s_f32( ) ), *I ] ) = just( [ *S, sev( i32( invSigned( 32, res ) ) ) ], I )
+  when just( res ) := trunc_s( 32, fval );
+private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i32_trunc_s_f32( ) ), *I ] ) = just( [ ], [ sec( trap( ) ) ] );
 // i32_trunc_u_f64
-private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i32_trunc_u_f64( ) ), *I ] ) = just( [ *S, sev( i32( invSigned( 32, trunc_u( 32, fval ) ) ) ) ], I );
+private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i32_trunc_u_f64( ) ), *I ] ) = just( [ *S, sev( i32( invSigned( 32, res ) ) ) ], I )
+  when just( res ) := trunc_u( 32, fval );
+private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i32_trunc_u_f64( ) ), *I ] ) = just( [ ], [ sec( trap( ) ) ] );
 // i32_trunc_s_f64
-private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i32_trunc_s_f64( ) ), *I ] ) = just( [ *S, sev( i32( invSigned( 32, trunc_s( 32, fval ) ) ) ) ], I );
+private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i32_trunc_s_f64( ) ), *I ] ) = just( [ *S, sev( i32( invSigned( 32, res ) ) ) ], I )
+  when just( res ) := trunc_s( 32, fval );
+private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i32_trunc_s_f64( ) ), *I ] ) = just( [ ], [ sec( trap( ) ) ] );
 // i64_trunc_u_f32
-private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i64_trunc_u_f32( ) ), *I ] ) = just( [ *S, sev( i64( invSigned( 64, trunc_u( 64, fval ) ) ) ) ], I );
+private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i64_trunc_u_f32( ) ), *I ] ) = just( [ *S, sev( i64( invSigned( 64, res ) ) ) ], I )
+  when just( res ) := trunc_u( 64, fval );
+private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i64_trunc_u_f32( ) ), *I ] ) = just( [ ], [ sec( trap( ) ) ] );
 // i64_trunc_s_f32
-private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i64_trunc_s_f32( ) ), *I ] ) = just( [ *S, sev( i64( invSigned( 64, trunc_s( 64, fval ) ) ) ) ], I );
+private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i64_trunc_s_f32( ) ), *I ] ) = just( [ *S, sev( i64( invSigned( 64, res ) ) ) ], I )
+  when just( res ) := trunc_s( 64, fval );
+private Maybe[thread] reduce( [ *S, sev( f32( fval ) ) ], [ sei( i64_trunc_s_f32( ) ), *I ] ) = just( [ ], [ sec( trap( ) ) ] );
 // i64_trunc_u_f64
-private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i64_trunc_u_f64( ) ), *I ] ) = just( [ *S, sev( i64( invSigned( 64, trunc_u( 64, fval ) ) ) ) ], I );
+private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i64_trunc_u_f64( ) ), *I ] ) = just( [ *S, sev( i64( invSigned( 64, res ) ) ) ], I )
+  when just( res ) := trunc_u( 64, fval );
+private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i64_trunc_u_f64( ) ), *I ] ) = just( [ ], [ sec( trap( ) ) ] );
 // i64_trunc_s_f64
-private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i64_trunc_s_f64( ) ), *I ] ) = just( [ *S, sev( i64( invSigned( 64, trunc_s( 64, fval ) ) ) ) ], I );
+private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i64_trunc_s_f64( ) ), *I ] ) = just( [ *S, sev( i64( invSigned( 64, res ) ) ) ], I )
+  when just( res ) := trunc_s( 64, fval );
+private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( i64_trunc_s_f64( ) ), *I ] ) = just( [ ], [ sec( trap( ) ) ] );
 // f32_demote_f64
 private Maybe[thread] reduce( [ *S, sev( f64( fval ) ) ], [ sei( f32_demote_f64( ) ), *I ] ) = just( [ *S, sev( f32( fval ) ) ], I );
 // f64_promote_f32

@@ -1,12 +1,12 @@
-module lang::webassembly::ScriptConvertADT
+module lang::webassembly::script::ScriptConvertADT
 
 import String;
 import IO;
 import util::Maybe;
 
 import lang::webassembly::ConvertADT;
-import lang::webassembly::ScriptADT;
-import lang::webassembly::ScriptSyntax;
+import lang::webassembly::script::ScriptADT;
+import lang::webassembly::script::ScriptSyntax;
 import lang::webassembly::execution::Numerics; // for invSigned( )
 import lang::webassembly::ToFloat;
 import util::Float;
@@ -76,18 +76,21 @@ WASM_SCRIPT toADT( start[WebAssemblyScript] script ) {
   return script_module( entries );
 }
 
-Maybe[tuple[ASSERTION,str]] toADT( (Assertion)`(assert_return <Action a> <Const* consts>)` )
-  = just( <assert_return( aADT, [ toADT( c ) | c <- consts ] ), modName> )
-  when <aADT,modName> := toADT( a );
-Maybe[tuple[ASSERTION,str]] toADT( (Assertion)`(assert_return_canonical_nan <Action a>)` )
-  = just( <assert_return_canonical_nan( aADT ), modName> )
-  when <aADT,modName> := toADT( a );
-Maybe[tuple[ASSERTION,str]] toADT( (Assertion)`(assert_return_arithmetic_nan <Action a>)` )
-  = just( <assert_return_arithmetic_nan( aADT ), modName> )
-  when <aADT,modName> := toADT( a );
-Maybe[tuple[ASSERTION,str]] toADT( (Assertion)`(assert_exhaustion <Action a> <String s>)` )
-  = just( <assert_exhaustion( aADT ), modName> )
-  when <aADT,modName> := toADT( a );
+Maybe[tuple[ASSERTION,str]] toADT( (Assertion)`(assert_return <Action ac> <Const* consts>)` )
+  = just( <assert_return( acADT, [ toADT( c ) | c <- consts ] ), modName> )
+  when <acADT,modName> := toADT( ac );
+Maybe[tuple[ASSERTION,str]] toADT( (Assertion)`(assert_return_canonical_nan <Action ac>)` )
+  = just( <assert_return_canonical_nan( acADT ), modName> )
+  when <acADT,modName> := toADT( ac );
+Maybe[tuple[ASSERTION,str]] toADT( (Assertion)`(assert_return_arithmetic_nan <Action ac>)` )
+  = just( <assert_return_arithmetic_nan( acADT ), modName> )
+  when <acADT,modName> := toADT( ac );
+Maybe[tuple[ASSERTION,str]] toADT( (Assertion)`(assert_exhaustion <Action ac> <String s>)` )
+  = just( <assert_exhaustion( acADT ), modName> )
+  when <acADT,modName> := toADT( ac );
+Maybe[tuple[ASSERTION,str]] toADT( (Assertion)`(assert_trap <Action ac> <String s>)` )
+  = just( <assert_trap( acADT ), modName> )
+  when <acADT,modName> := toADT( ac );
 Maybe[tuple[ASSERTION,str]] toADT( Assertion a ) = nothing( );
 
 tuple[ACTION action,str modName] toADT( (Action)`(invoke <Id? id> <Name name> <Const* consts>)` ) = <invoke( toADT( name ), [ toADT( c ) | c <- consts ] ), "<id>" >;

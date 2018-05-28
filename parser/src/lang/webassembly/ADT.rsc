@@ -263,3 +263,28 @@ data EXPORTDESC = exportdesc_func( FUNCIDX i )
                 | exportdesc_mem( MEMIDX i )
                 | exportdesc_global( GLOBALIDX i )
                 ;
+
+// Not currently in use
+anno loc MODULE@location;
+anno loc VALTYPE@location;
+anno loc RESULTTYPE@location;
+anno loc FUNCTYPE@location;
+anno loc LIMITS@location;
+anno loc MEMTYPE@location;
+anno loc ELEMTYPE@location;
+anno loc TABLETYPE@location;
+anno loc GLOBALTYPE@location;
+anno loc MUT@location;
+anno loc INSTR@location;
+anno loc EXPR@location;
+anno loc FUNC@location;
+anno loc TABLE@location;
+anno loc MEM@location;
+anno loc GLOBAL@location;
+anno loc ELEM@location;
+anno loc DATA@location;
+anno loc START@location;
+anno loc IMPORT@location;
+anno loc IMPORTDESC@location;
+anno loc EXPORT@location;
+anno loc EXPORTDESC@location;

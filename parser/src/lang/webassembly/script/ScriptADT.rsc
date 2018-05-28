@@ -1,7 +1,7 @@
-module lang::webassembly::ScriptADT
+module lang::webassembly::script::ScriptADT
 
 extend lang::webassembly::ADT;
-import lang::webassembly::Float;
+import util::Float;
 
 // This structure is not formally defined, instead it is used in the
 //   testsuite and the reference parser. A subset of those instructions

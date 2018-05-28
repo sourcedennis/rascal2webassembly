@@ -1,6 +1,7 @@
 module lang::webassembly::execution::RuntimeOperations
 
 import util::Maybe;
+import util::Math;
 import Exception;
 import List;
 import IO; // temp
@@ -24,6 +25,17 @@ import util::Float;
 
 // Note: Importing of tables/globals is not supported
 
+// # Settings
+
+// The maximum number of memory pages (sized 64KiB) that can be present in a store
+// Not formally from the specification, as semantically, memory would be infinite.
+// Clearly, no infinite memory is available. And as stores are immutable, and copied
+// and modified upon performing some reduction steps, memory quickly runs out
+// resulting in a OutOfMemoryError. Hence this variable exists.
+// Also, an 0x100*(64*1024) array of Rascal's big integers, is a lot bigger than
+// a byte array of the same size. So this is a reasonable amount.
+int MAX_NUM_PAGES = 0x100;
+
 // ## Configuration
 
 public bool isDone( config( s, thread( Stack stack, [] ) ) ) = true;
@@ -35,7 +47,7 @@ list[runtime_val] getResults( config c: config( store, thread( Stack stack, inst
   when isDone( c ) && !hasTrapped( c );
 list[runtime_val] getResults( config c ) = \throw( AssertionFailed( "Configuration not succesfully finished" ) );
 
-public bool hasTrapped( config( s, thread( Stack stack, [ trap( ) ] ) ) ) = true;
+public bool hasTrapped( config( s, thread( Stack stack, [ sec( trap( ) ) ] ) ) ) = true;
 public bool hasTrapped( config c ) = \throw( AssertionFailed( "Configuration not finished" ) )
   when !isDone( c );
 public bool hasTrapped( config c ) = false;
@@ -63,7 +75,7 @@ public config setupExecutionConfig( MODULE modBase, moduleinst modInst, store s,
   FUNC func = modBase.funcs[ funcIdx - size( importFuncs ) ];
   list[VALTYPE] params = modBase.types[ func.typeIdx ].params;
   if ( params != [ getType( a ) | a <- arguments ] ) {
-    throw IllegalArgument( "Function arguments do not match function signature" );
+    throw IllegalArgument( "Function arguments do not match function signature: <params>" );
   }
   
   locals = [ runtimeInit( lt ) | lt <- func.locals ];
@@ -103,13 +115,18 @@ GLOBALIDX findExportGlobalIdx( exports:[ export( eName, exportdesc_global( GLOBA
 GLOBALIDX findExportGlobalIdx( exports:[ _, *L ], str name ) = findExportFuncIdx( L, name );
 GLOBALIDX findExportGlobalIdx( exports:[], str name ) = -1;*/
 
+private globaladdr findExportGlobalAddr( list[exportinst] _:[], str name ) = \throw( AssertionFailed( "Global not present" ) );
+// Doing the pattern-match on exportinst in the function signature curiously fails. TODO?
+private globaladdr findExportGlobalAddr( list[exportinst] insts, str name ) {
+  if ( exportinst( str eName, externval_global( addr ) ) := head( insts ) && eName == name ) {
+    return addr;
+  } else {
+    return findExportGlobalAddr( tail( insts ), name );
+  }
+}
+
 public globaladdr findExportGlobalAddr( moduleinst modInst, str name )
   = findExportGlobalAddr( modInst.exports, name );
-private globaladdr findExportGlobalAddr( list[exportinst] _:[exportinst( eName, externval_global( globaladdr addr ) ), *E], str name )
-  = ( name == eName ) ? addr : findExportGlobalAddr( E, name );
-private globaladdr findExportGlobalAddr( list[exportinst] _:[_, *E], str name )
-  = findExportGlobalAddr( E, name );
-private globaladdr findExportGlobalAddr( list[exportinst] _:[], str name ) = \throw( AssertionFailed( "Global not present" ) );
 
 // In this implementation the "addr" directly corresponds to the index in the module. This is therefore assumed here
 exportinst setupExportInst( export( NAME name, exportdesc_func( FUNCIDX i ) ) ) = exportinst( name, externval_func( i ) );
@@ -145,8 +162,11 @@ private funcinst toFuncinst( moduleinst m, list[FUNCTYPE] functypes, f:func( typ
 // ## Memory
 // Note: WebAssembly 1.0 only supports at most 1 memory page
 
-public store setMemoryBytes( store( a, b, list[meminst] mems, c ), int location, list[byte] values )
-  = store( a, b, setAt( mems, 0, setMemoryBytes( mems[ 0 ], location, values ) ), c );
+private int PAGESIZE = 64 * 1024; // from spec
+
+public store setMemoryBytes( s:store( a, b, list[meminst] mems, c ), int location, bytes values )
+  = store( a, b, setAt( mems, 0, setMemoryBytes( mems[ 0 ], location, values ) ), c )
+  when hasMemoryBytes( s, location, size( values ) );
 
 private meminst setMemoryBytes( m:meminst( bytes \data, int maxNumPages ), int location, bytes values ) {
   return meminst( mergeAt( \data, location, values ), maxNumPages );
@@ -154,8 +174,12 @@ private meminst setMemoryBytes( m:meminst( bytes \data, int maxNumPages ), int l
 private meminst setMemoryBytes( meminst( bytes \data ), int location, bytes values )
   = meminst( mergeAt( \data, location, values ) );
 
-public bytes getMemoryBytes( store( a, b, list[meminst] mems, c ), int location, int numBytes )
-  = mems[ 0 ].\data[location..location+numBytes];
+public bytes getMemoryBytes( s:store( a, b, list[meminst] mems, c ), int location, int numBytes )
+  = mems[ 0 ].\data[location..location+numBytes]
+  when hasMemoryBytes( s, location, numBytes );
+
+public bool hasMemoryBytes( store( a, b, list[meminst] mems, c ), int location, int numBytes )
+  = ( location >= 0 && location + numBytes <= size( mems[ 0 ].\data ) );
 
 public int memorySize( store( a, b, list[meminst] mems, c ) ) = size( mems[ 0 ].\data ) / ( 64 * 1024 );
 
@@ -166,13 +190,16 @@ public default Maybe[store] memoryGrow( store( a, b, list[meminst] mems, c ), in
   = nothing( );
 
 private meminst memoryGrow( meminst( bytes \data, int maxNumPages ), int numNewPages )
-  = meminst( \data + [ 0 | i <- [0..numNewPages*(64*1024)] ], maxNumPages );
+  = meminst( \data + [ 0 | i <- [0..numNewPages*PAGESIZE] ], maxNumPages );
 private meminst memoryGrow( meminst( bytes \data ), int numNewPages )
-  = meminst( \data + [ 0 | i <- [0..numNewPages*(64*1024)] ] );
+  = meminst( \data + [ 0 | i <- [0..numNewPages*PAGESIZE] ] );
 
-private bool canGrowMemory( meminst( bytes \data, int maxNumPages ), int numNewPages ) = ( currNumPages + numNewPages <= maxNumPages )
-  when currNumPages := size( \data ) / ( 64 * 1024 );
-private bool canGrowMemory( meminst( bytes \data ), int numNewPages ) = true; // No max was set
+private bool canGrowMemory( meminst( bytes \data, int maxNumPages ), int numNewPages )
+  = ( currNumPages + numNewPages <= min( MAX_NUM_PAGES, maxNumPages ) )
+  when currNumPages := size( \data ) / PAGESIZE;
+private bool canGrowMemory( meminst( bytes \data ), int numNewPages )
+  = ( currNumPages + numNewPages <= MAX_NUM_PAGES ) // No max was set
+  when currNumPages := size( \data ) / PAGESIZE;
 
 private list[meminst] setupMeminsts( list[IMPORT] importMems, list[MEM] mems, list[DATA] \data ) {
   insts = [ emptyMeminst( ) | i <- importMems ] + [ toMeminst( m ) | m <- mems ];

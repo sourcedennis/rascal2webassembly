@@ -1,5 +1,6 @@
 module lang::webassembly::execution::Numerics
 
+import IO; // temp
 import List;
 import util::IntPower;
 import Exception;

@@ -3,16 +3,18 @@ module lang::webassembly::ConvertADT
 import IO; // TEMP
 import List;
 import String;
+import ParseTree;
+
 import lang::webassembly::ADT;
 import lang::webassembly::Syntax;
 import lang::webassembly::String2UTF8;
 import lang::webassembly::execution::Numerics; // for invSigned( )
 import lang::webassembly::ToFloat;
-import ParseTree;
+import lang::webassembly::ToInt;
 
 MODULE toADT( (start[WebAssembly])`<Module m>` ) = toADT( m );
 
-MODULE toADT( Module m ) {
+MODULE toADT( Module m:(Module)`(module <Id? _> <ModuleField* fields>)` ) {
   list[FUNCTYPE] functypes = [];
   list[FUNC] funcs = [];
   list[TABLE] tables = [];
@@ -26,17 +28,21 @@ MODULE toADT( Module m ) {
   
   IdContext ctx = setupGlobalContext( m );
   
-  top-down-break visit( m ) {
-  case FuncType f: functypes += toADT( f );
-  case Func f: funcs += toADT( ctx, f );
-  case Table t: tables += toADT( t );
-  case Mem m: mems += toADT( m );
-  case Global g: globals += toADT( ctx, g );
-  case Elem e: elems += toADT( ctx, e );
-  case Data d: \data += toADT( ctx, d );
-  case Start s: starts += toADT( ctx, s );
-  case Import i: imports += toADT( ctx, i );
-  case Export e: exports += toADT( ctx, e );
+  // This for-loop is necessary, as for big modules a visit on 'm'
+  // causes a StackOverflow.
+  for ( ModuleField f <- fields ) {
+    top-down-break visit( f ) {
+	case FuncType f: functypes += toADT( f );
+	case Func f: funcs += toADT( ctx, f );
+	case Table t: tables += toADT( t );
+	case Mem m: mems += toADT( m );
+	case Global g: globals += toADT( ctx, g );
+	case Elem e: elems += toADT( ctx, e );
+	case Data d: \data += toADT( ctx, d );
+	case Start s: starts += toADT( ctx, s );
+	case Import i: imports += toADT( ctx, i );
+	case Export e: exports += toADT( ctx, e );
+	}
   }
   
   if ( size( starts ) == 1 ) {
@@ -51,8 +57,8 @@ FUNCTYPE toADT( (FuncType)`(func <Param* ps> <Result* rs>)` )
 
 TABLE toADT( (Table)`(table <Id? _> <TableType t>)`) = table( toADT( t ) );
 TABLETYPE toADT( (TableType)`<Limits l> <ElemType et>` ) = tabletype( toADT( l ), toADT( et ) );
-LIMITS toADT( (Limits)`<U32 u1>` ) = limits( toInt( "<u1>" ) );
-LIMITS toADT( (Limits)`<U32 u1> <U32 u2>` ) = limits( toInt( "<u1>" ), toInt( "<u2>" ) );
+LIMITS toADT( (Limits)`<U32 u1>` ) = limits( toIntWasm( "<u1>" ) );
+LIMITS toADT( (Limits)`<U32 u1> <U32 u2>` ) = limits( toIntWasm( "<u1>" ), toIntWasm( "<u2>" ) );
 ELEMTYPE toADT( ElemType t ) = anyfunc( ); // Only option in WebAssembly 1.0
 
 MEM toADT( (Mem)`(memory <Id? _> <MemType memType>)` ) = mem( toADT( memType ) );
@@ -144,16 +150,16 @@ VALTYPE toADT( (Result)`(result <ValType valType>)` ) = toADT( valType );
 VALTYPE toADT( (Param)`(param <Id _> <ValType valType>)` ) = toADT( valType );
 VALTYPE toADT( (Param)`(param <ValType valType>)` ) = toADT( valType );
 
-int parseOffset( Offset offset ) = toInt( substring( "<offset>", 7 ) ); // offset=<U32>
-int parseAlign( Align align ) = toInt( substring( "<align>", 6 ) ); // align=<U32>
+int parseOffset( Offset offset ) = toIntWasm( substring( "<offset>", 7 ) ); // offset=<U32>
+int parseAlign( Align align ) = toIntWasm( substring( "<align>", 6 ) ); // align=<U32>
 
 tuple[int,int] parseMemArg( (MemArg)``, int naturalAlignment ) = < 0, naturalAlignment >;
 tuple[int,int] parseMemArg( (MemArg)`<Offset offset>`, int naturalAlignment ) = < parseOffset( offset ), naturalAlignment >;
 tuple[int,int] parseMemArg( (MemArg)`<Align align>`, int naturalAlignment ) = < 0, parseAlign( align ) >;
 tuple[int,int] parseMemArg( (MemArg)`<Offset offset> <Align align>`, int naturalAlignment ) = < parseOffset( offset ), parseAlign( align ) >;
 
-INSTR toADT( IdContext ctx, (Instr)`i32.const <I32 val>` ) = i32_const( invSigned( 32, toInt( replaceAll( "<val>", "_", "" ) ) ) );
-INSTR toADT( IdContext ctx, (Instr)`i64.const <I64 val>` ) = i64_const( invSigned( 64, toInt( replaceAll( "<val>", "_", "" ) ) ) );
+INSTR toADT( IdContext ctx, (Instr)`i32.const <I32 val>` ) = i32_const( invSigned( 32, toIntWasm( "<val>" ) ) );
+INSTR toADT( IdContext ctx, (Instr)`i64.const <I64 val>` ) = i64_const( invSigned( 64, toIntWasm( "<val>" ) ) );
 INSTR toADT( IdContext ctx, (Instr)`f32.const <F32 val>` ) = f32_const( toFloat( "<val>" ) );
 INSTR toADT( IdContext ctx, (Instr)`f64.const <F64 val>` ) = f64_const( toFloat( "<val>" ) );
 // iunop
@@ -489,18 +495,18 @@ IdContext setupGlobalContext( Module m ) {
 }
 
 // idContext( types, typeNames, funcNames, tableNames, memNames, globalNames, 0, localNames, 0, labelNames )
-int getIndex( idContext( _, _, _, _, _, _, _, localNames, _, _ ), (LocalIdx)`<U32 id>` ) = toInt( "<id>" );
+int getIndex( idContext( _, _, _, _, _, _, _, localNames, _, _ ), (LocalIdx)`<U32 id>` ) = toIntWasm( "<id>" );
 int getIndex( idContext( _, _, _, _, _, _, _, localNames, _, _ ), (LocalIdx)`<Id id>` ) = localNames[ "<id>" ];
-int getIndex( idContext( _, typeNames, _, _, _, _, _, _, _, _ ), (TypeIdx)`<U32 id>` ) = toInt( "<id>" );
+int getIndex( idContext( _, typeNames, _, _, _, _, _, _, _, _ ), (TypeIdx)`<U32 id>` ) = toIntWasm( "<id>" );
 int getIndex( idContext( _, typeNames, _, _, _, _, _, _, _, _ ), (TypeIdx)`<Id id>` ) = typeNames[ "<id>" ];
-int getIndex( idContext( _, _, _, _, _, globalNames, _, _, _, _ ), (GlobalIdx)`<U32 id>` ) = toInt( "<id>" );
+int getIndex( idContext( _, _, _, _, _, globalNames, _, _, _, _ ), (GlobalIdx)`<U32 id>` ) = toIntWasm( "<id>" );
 int getIndex( idContext( _, _, _, _, _, globalNames, _, _, _, _ ), (GlobalIdx)`<Id id>` ) = globalNames[ "<id>" ];
-int getIndex( idContext( _, _, _, _, _, _, _, _, numLabels, labelNames ), (LabelIdx)`<U32 id>` ) = toInt( "<id>" );
+int getIndex( idContext( _, _, _, _, _, _, _, _, numLabels, labelNames ), (LabelIdx)`<U32 id>` ) = toIntWasm( "<id>" );
 // Label 0 refers to the innermost control structure encapsulating the instruction referencing it
 int getIndex( idContext( _, _, _, _, _, _, _, _, numLabels, labelNames ), (LabelIdx)`<Id id>` ) = numLabels - 1 - labelNames[ "<id>" ];
-int getIndex( idContext( _, _, funcNames, _, _, _, _, _, _, _ ), (FuncIdx)`<U32 id>` ) = toInt( "<id>" );
+int getIndex( idContext( _, _, funcNames, _, _, _, _, _, _, _ ), (FuncIdx)`<U32 id>` ) = toIntWasm( "<id>" );
 int getIndex( idContext( _, _, funcNames, _, _, _, _, _, _, _ ), (FuncIdx)`<Id id>` ) = funcNames[ "<id>" ];
-int getIndex( idContext( _, _, _, _, memNames, _, _, _, _, _ ), (MemIdx)`<U32 id>` ) = toInt( "<id>" );
+int getIndex( idContext( _, _, _, _, memNames, _, _, _, _, _ ), (MemIdx)`<U32 id>` ) = toIntWasm( "<id>" );
 int getIndex( idContext( _, _, _, _, memNames, _, _, _, _, _ ), (MemIdx)`<Id id>` ) = memNames[ "<id>" ];
-int getIndex( idContext( _, _, _, tableNames, _, _, _, _, _, _ ), (TableIdx)`<U32 id>` ) = toInt( "<id>" );
+int getIndex( idContext( _, _, _, tableNames, _, _, _, _, _, _ ), (TableIdx)`<U32 id>` ) = toIntWasm( "<id>" );
 int getIndex( idContext( _, _, _, tableNames, _, _, _, _, _, _ ), (TableIdx)`<Id id>` ) = tableNames[ "<id>" ];

@@ -1,4 +1,4 @@
-module lang::webassembly::ScriptSyntax
+module lang::webassembly::script::ScriptSyntax
 
 extend lang::webassembly::Syntax;
 

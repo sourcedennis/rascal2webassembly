@@ -6,6 +6,7 @@ import Exception;
 import String;
 import util::Math;
 import IO; // temp
+import util::Maybe;
 
 import util::LittleEndian;
 
@@ -71,36 +72,51 @@ Float fnearest( Float f ) {
   }
 }
 
-Float min( negative_infinity( ), _ ) = negative_infinity( );
-Float min( _, negative_infinity( ) ) = negative_infinity( );
-Float min( a, positive_infinity( ) ) = a;
+Float min( negative_infinity( ), canonical_nan( ) ) = canonical_nan( ); // needed. Pattern match order being strange
+Float min( canonical_nan( ), arithmetic_nan( ) ) = arithmetic_nan( ); // needed. Pattern match order being strange
+Float min( positive_infinity( ), arithmetic_nan( ) ) = arithmetic_nan( ); // needed. Pattern match order being strange
+Float min( negative_infinity( ), arithmetic_nan( ) ) = arithmetic_nan( ); // needed. Pattern match order being strange
+Float min( arithmetic_nan( ), Float _ ) = arithmetic_nan( );
+Float min( Float _, arithmetic_nan( ) ) = arithmetic_nan( );
+Float min( canonical_nan( ), Float _ ) = canonical_nan( );
+Float min( Float _, canonical_nan( ) ) = canonical_nan( );
+Float min( negative_infinity( ), Float _ ) = negative_infinity( );
+Float min( Float _, negative_infinity( ) ) = negative_infinity( );
+Float min( Float a, positive_infinity( ) ) = a;
 Float min( positive_infinity( ), a ) = a;
-Float min( canonical_nan( ), _ ) = canonical_nan( );
-Float min( _, canonical_nan( ) ) = canonical_nan( );
-Float min( arithmetic_nan( ), _ ) = arithmetic_nan( );
-Float min( _, arithmetic_nan( ) ) = arithmetic_nan( );
 Float min( fval( a ), fval( b ) ) = fval( min( a, b ) );
 
+Float max( positive_infinity( ), canonical_nan( ) ) = canonical_nan( ); // needed. Pattern match order being strange
+Float max( canonical_nan( ), arithmetic_nan( ) ) = arithmetic_nan( ); // needed. Pattern match order being strange
+Float max( positive_infinity( ), arithmetic_nan( ) ) = arithmetic_nan( ); // needed. Pattern match order being strange
+Float max( negative_infinity( ), arithmetic_nan( ) ) = arithmetic_nan( ); // needed. Pattern match order being strange
+Float max( arithmetic_nan( ), _ ) = arithmetic_nan( );
+Float max( _, arithmetic_nan( ) ) = arithmetic_nan( );
+Float max( canonical_nan( ), _ ) = canonical_nan( );
+Float max( _, canonical_nan( ) ) = canonical_nan( );
 Float max( positive_infinity( ), _ ) = positive_infinity( );
 Float max( _, positive_infinity( ) ) = positive_infinity( );
 Float max( a, negative_infinity( ) ) = a;
 Float max( negative_infinity( ), a ) = a;
-Float max( canonical_nan( ), _ ) = canonical_nan( );
-Float max( _, canonical_nan( ) ) = canonical_nan( );
-Float max( arithmetic_nan( ), _ ) = arithmetic_nan( );
-Float max( _, arithmetic_nan( ) ) = arithmetic_nan( );
 Float max( fval( a ), fval( b ) ) = fval( max( a, b ) );
 
 Float sqrt( Float f:fval( real v ) ) {
+  if ( v < 0 ) {
+    return canonical_nan( );
+  }
   try {
     return fval( sqrt( v ) );
   } catch ex: {
     return fval( 0.0 );
   }
 }
+Float sqrt( negative_infinity( ) ) = canonical_nan( );
+Float sqrt( arbitrary_infinity( ) ) = canonical_nan( );
 Float sqrt( Float f ) = f;
 
 Float abs( Float f:fval( real v ) ) = fval( abs( v ) );
+Float abs( negative_infinity( ) ) = positive_infinity( );
+Float abs( arbitrary_infinity( ) ) = positive_infinity( );
 Float abs( Float f ) = f;
 
 Float ceil( Float f:fval( real v ) ) = fval( toReal( ceil( v ) ) );
@@ -135,48 +151,63 @@ real fnearest( real f ) {
 }
 
 Float add( fval( a ), fval( b ) ) = fval( a + b );
+Float add( canonical_nan( ), arithmetic_nan( ) ) = arithmetic_nan( ); // needed. Pattern match order being strange
+Float add( _, arithmetic_nan( ) ) = arithmetic_nan( );
+Float add( arithmetic_nan( ), _ ) = arithmetic_nan( );
+Float add( _, canonical_nan( ) ) = canonical_nan( );
+Float add( canonical_nan( ), _ ) = canonical_nan( );
 Float add( positive_infinity( ), fval( _ ) ) = positive_infinity( );
 Float add( fval( _ ), positive_infinity( ) ) = positive_infinity( );
 Float add( negative_infinity( ), fval( _ ) ) = negative_infinity( );
 Float add( fval( _ ), negative_infinity( ) ) = negative_infinity( );
 Float add( negative_infinity( ), negative_infinity( ) ) = negative_infinity( );
 Float add( positive_infinity( ), positive_infinity( ) ) = positive_infinity( );
-Float add( negative_infinity( ), positive_infinity( ) ) = fval( 0.0 );
-Float add( positive_infinity( ), negative_infinity( ) ) = fval( 0.0 );
-Float add( canonical_nan( ), _ ) = canonical_nan( );
-Float add( _, canonical_nan( ) ) = canonical_nan( );
+Float add( negative_infinity( ), positive_infinity( ) ) = canonical_nan( );
+Float add( positive_infinity( ), negative_infinity( ) ) = canonical_nan( );
 
 Float subtract( fval( a ), fval( b ) ) = fval( a - b );
+Float subtract( canonical_nan( ), arithmetic_nan( ) ) = arithmetic_nan( ); // needed. Pattern match order being strange
+Float subtract( _, arithmetic_nan( ) ) = arithmetic_nan( );
+Float subtract( arithmetic_nan( ), _ ) = arithmetic_nan( );
+Float subtract( _, canonical_nan( ) ) = canonical_nan( );
+Float subtract( canonical_nan( ), _ ) = canonical_nan( );
 Float subtract( positive_infinity( ), fval( _ ) ) = positive_infinity( );
 Float subtract( fval( _ ), positive_infinity( ) ) = negative_infinity( );
 Float subtract( negative_infinity( ), fval( _ ) ) = negative_infinity( );
 Float subtract( fval( _ ), negative_infinity( ) ) = positive_infinity( );
-Float subtract( negative_infinity( ), negative_infinity( ) ) = positive_infinity( );
-Float subtract( positive_infinity( ), positive_infinity( ) ) = positive_infinity( );
+Float subtract( negative_infinity( ), negative_infinity( ) ) = canonical_nan( );
+Float subtract( positive_infinity( ), positive_infinity( ) ) = canonical_nan( );
 Float subtract( negative_infinity( ), positive_infinity( ) ) = negative_infinity( );
 Float subtract( positive_infinity( ), negative_infinity( ) ) = positive_infinity( );
 
 Float multiply( fval( a ), fval( b ) ) = fval( a * b );
+Float multiply( canonical_nan( ), arithmetic_nan( ) ) = arithmetic_nan( ); // needed. Pattern match order being strange
+Float multiply( _, arithmetic_nan( ) ) = arithmetic_nan( );
+Float multiply( arithmetic_nan( ), _ ) = arithmetic_nan( );
+Float multiply( _, canonical_nan( ) ) = canonical_nan( );
+Float multiply( canonical_nan( ), _ ) = canonical_nan( );
 Float multiply( positive_infinity( ), positive_infinity( ) ) = positive_infinity( );
 Float multiply( negative_infinity( ), negative_infinity( ) ) = positive_infinity( );
 Float multiply( negative_infinity( ), positive_infinity( ) ) = negative_infinity( );
 Float multiply( positive_infinity( ), negative_infinity( ) ) = negative_infinity( );
-Float multiply( positive_infinity( ), fval( 0 ) ) = fval( 0.0 );
+Float multiply( positive_infinity( ), fval( 0.0 ) ) = canonical_nan( );
 Float multiply( positive_infinity( ), fval( a ) ) = ( a > 0 ? positive_infinity( ) : negative_infinity( ) );
-Float multiply( fval( 0.0 ), positive_infinity( ) ) = fval( 0 );
+Float multiply( fval( 0.0 ), positive_infinity( ) ) = canonical_nan( );
 Float multiply( fval( a ), positive_infinity( ) ) = ( a > 0 ? positive_infinity( ) : negative_infinity( ) );
-Float multiply( negative_infinity( ), fval( 0 ) ) = fval( 0.0 );
+Float multiply( negative_infinity( ), fval( 0.0 ) ) = canonical_nan( );
 Float multiply( negative_infinity( ), fval( a ) ) = ( a < 0 ? positive_infinity( ) : negative_infinity( ) );
-Float multiply( fval( 0.0 ), negative_infinity( ) ) = fval( 0.0 );
+Float multiply( fval( 0.0 ), negative_infinity( ) ) = canonical_nan( );
 Float multiply( fval( a ), negative_infinity( ) ) = ( a < 0 ? positive_infinity( ) : negative_infinity( ) );
 
 // Unknown if 0.0 or -0.0. So arbitrary infinity
+Float divide( fval( 0.0 ), fval( 0.0 ) ) = canonical_nan( );
+Float divide( canonical_nan( ), arithmetic_nan( ) ) = arithmetic_nan( ); // needed. Pattern match order being strange
 Float divide( fval( a ), fval( 0.0 ) ) = arbitrary_infinity( );
 Float divide( fval( a ), fval( b ) ) = fval( a / b );
-Float divide( positive_infinity( ), positive_infinity( ) ) = fval( 0.0 );
-Float divide( negative_infinity( ), negative_infinity( ) ) = fval( 0.0 );
-Float divide( negative_infinity( ), positive_infinity( ) ) = fval( 0.0 );
-Float divide( positive_infinity( ), negative_infinity( ) ) = fval( 0.0 );
+Float divide( positive_infinity( ), positive_infinity( ) ) = canonical_nan( );
+Float divide( negative_infinity( ), negative_infinity( ) ) = canonical_nan( );
+Float divide( negative_infinity( ), positive_infinity( ) ) = canonical_nan( );
+Float divide( positive_infinity( ), negative_infinity( ) ) = canonical_nan( );
 Float divide( positive_infinity( ), fval( 0.0 ) ) = arbitrary_infinity( );
 Float divide( positive_infinity( ), fval( a ) ) = ( a > 0 ? positive_infinity( ) : negative_infinity( ) );
 Float divide( negative_infinity( ), fval( 0.0 ) ) = arbitrary_infinity( );
@@ -184,6 +215,10 @@ Float divide( negative_infinity( ), fval( a ) ) = ( a < 0 ? positive_infinity( )
 Float divide( fval( a ), positive_infinity( ) ) = fval( 0.0 );
 Float divide( fval( a ), negative_infinity( ) ) = fval( 0.0 );
 Float divide( fval( a ), arbitrary_infinity( ) ) = fval( 0.0 );
+Float divide( _, canonical_nan( ) ) = canonical_nan( );
+Float divide( canonical_nan( ), _ ) = canonical_nan( );
+Float divide( _, arithmetic_nan( ) ) = arithmetic_nan( );
+Float divide( arithmetic_nan( ), _ ) = arithmetic_nan( );
 
 int signif( 32 ) = 23;
 int signif( 64 ) = 52;
@@ -279,27 +314,27 @@ bool lt( positive_infinity( ), positive_infinity( ) ) = false;
 bool lt( _, positive_infinity( ) ) = true;
 bool lt( Float _, Float _ ) = false;
 
-int trunc_u( int destN, fval( real v ) ) = trunc_u( destN, v );
-int trunc_u( int destN, Float f ) = 0; // undefined
+Maybe[int] trunc_u( int destN, fval( real v ) ) = trunc_u( destN, v );
+Maybe[int] trunc_u( int destN, Float f ) = nothing( ); // undefined behaviour
 
-int trunc_u( int destN, real f ) {
+Maybe[int] trunc_u( int destN, real f ) {
   int i = toInt( f );
-  if ( i >= pow2( destN ) ) {
-    return 0; // undefined
+  if ( i < 0 || i >= pow2( destN ) ) {
+    return nothing( );
   } else {
-    return i;
+    return just( i );
   }
 }
 
-int trunc_s( int destN, fval( real v ) ) = trunc_s( destN, v );
-int trunc_s( int destN, Float f ) = 0; // undefined
+Maybe[int] trunc_s( int destN, fval( real v ) ) = trunc_s( destN, v );
+Maybe[int] trunc_s( int destN, Float f ) = nothing( ); // undefined behaviour
 
-int trunc_s( int destN, real f ) {
+Maybe[int] trunc_s( int destN, real f ) {
   int i = toInt( f );
   if ( i >= pow2( destN - 1 ) || i < -pow2( destN - 1 ) ) {
-    return 0; // undefined
+    return nothing( );
   } else {
-    return i;
+    return just( i );
   }
 }
 

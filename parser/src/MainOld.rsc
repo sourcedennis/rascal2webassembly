@@ -1,4 +1,4 @@
-module Main
+module MainOld
 
 import IO;
 import Map;
@@ -72,20 +72,6 @@ str stack2str( sef( frame( locals, retArity, _ ) ) ) = "frame(<retArity>,<locals
 str joinStr( [], str delim ) = "";
 str joinStr( [e], str delim ) = e;
 str joinStr( [e, *L], str delim ) = e + delim + joinStr( L, delim );
-
-void mainParse( ) {
-  loc lTestSuite = |project://testsuite/|;
-  // The test suite also contains proposed extensions in sub directories
-  // Therefore only take .wast files in root directory.
-  set[loc] lTestFiles = { f | f <- lTestSuite.ls, !isDirectory(f), f.extension == "wast" };
-  map[loc,bool] fileParseStatus = ( f: tryParseWasmScript( f ) | f <- lTestFiles );
-  
-  int numSuccess = ( 0 | fileParseStatus[file] ? it + 1 : it | loc file <- fileParseStatus );
-  println( "Successfully parsed: <numSuccess>/<size(fileParseStatus)>" );
-  
-  set[loc] unsuccessfulFiles = { l | loc l <- fileParseStatus, !fileParseStatus[l] };
-  println( unsuccessfulFiles );
-}
 
 void mainDesugar( ) {
   loc lTestSuite = |project://testsuite/|;

@@ -58,9 +58,15 @@ public config reduce( HostFunction hf, config( store s, thread( S, [ sec( end( )
   S = take( size( S ) - size( values ), S );
   
   if ( [ *S2, sel( retArity, instrs ) ] := S ) {
-    //assert size( values ) >= retArity;
-    //list[runtime_val] results = drop( size( values ) - retArity, values );
-    return config( s, thread( S2 + [ sev( v ) | v <- values ], /*[ sei( i ) | i <- instrs ] +*/ I ) );
+    // According to the spec, no arity check of results is necessary here
+    // as validation ensures that: size( values ) == statement's arity
+    // (Note that a loop label's arity is always 0, even if it does return something
+    //    - it's just than an explicit break to a loop is actually a "continue" statement
+    //    which should not return anything)
+    
+    // Apparently the instructions inside the label do not repeat here, instead they fall off
+    // So, for a loop to continue, an explicit break has to be inserted to the start of the loop
+    return config( s, thread( S2 + [ sev( v ) | v <- values ], I ) );
   } else if ( [ *S2, sef( retArity, frame ) ] := S ) {
     assert size( values ) >= retArity;
     list[runtime_val] results = drop( size( values ) - retArity, values );
@@ -98,6 +104,7 @@ private list[instrelem] cutEnds( int numEnds, [ sec( end( ) ), *I ] ) = cutEnds(
 private list[instrelem] cutEnds( int numEnds, [ _, *I ] ) = cutEnds( numEnds, I );
 private list[instrelem] cutEnds( int numEnds, list[instrelem] _:[] ) = Throw( AssertionFailed( "There must be enough end() instructions" ) );
 
+// This cuts away 'numLabels' labels UP TO the 'numLabels+1' label
 private Stack cutLabels( int numLabels:0, S:[*_, sel(_,_)] ) = S;
 private Stack cutLabels( int numLabels, [*S, sel(_,_)] ) = cutLabels( numLabels - 1, S );
 private Stack cutLabels( int numLabels, [*S, sef(_,_)] ) = \throw( AssertionFailed( "There must be enough labels. Cannot break out of a function." ) );

@@ -283,16 +283,40 @@ Module prependFields( m:(Module)`(module <Id? id> <ModuleField* fields>)`, list[
   = prependFields( (Module)`(module <Id? id> <ModuleField newField> <ModuleField* fields>)`, prefix( newFields ) )
   when newField := last( newFields );
 
-FuncBody addLocals( b:(FuncBody)`<Local* locals> <Instr* instrs>`, [] ) = b;
+/*FuncBody addLocals( b:(FuncBody)`<Local* locals> <Instr* instrs>`, [] ) = b;
 FuncBody addLocals( (FuncBody)`<Local* locals> <Instr* instrs>`, list[Local] newLocals )
   = addLocals( (FuncBody)`<Local* locals> <Local first> <Instr* instrs>`, tail( newLocals ) )
-  when first := head( newLocals );
+  when first := head( newLocals );*/
 
-FuncBody addInstrs( b:(FuncBody)`<Local* locals> <Instr* instrs>`, [] ) = b;
+// These are made iteratively, to avoid a StackOverflow that may otherwise occur
+FuncBody addLocals( f:(FuncBody)`<Local* locals> <Instr* instrs>`, list[Local] newLocals ) {
+  for ( l <- newLocals ) {
+    if ( (FuncBody)`<Local* locals> <Instr* instrs>` := f ) {
+      f = (FuncBody)`<Local* locals> <Local l> <Instr* instrs>`;
+    } else {
+      throw AssertionFailed( "Only syntax mismatched. Cannot happen." );
+    }
+  }
+  return f;
+}
+
+/*FuncBody addInstrs( b:(FuncBody)`<Local* locals> <Instr* instrs>`, [] ) = b;
 FuncBody addInstrs( (FuncBody)`<Local* locals> <Instr* instrs>`, list[Instr] newInstrs )
   = addInstrs( (FuncBody)`<Local* locals> <Instr* instrs> <Instr first>`, tail( newInstrs ) )
-  when first := head( newInstrs );
-  
+  when first := head( newInstrs );*/
+
+// These are made iteratively, to avoid a StackOverflow that may otherwise occur
+FuncBody addInstrs( f:(FuncBody)`<Local* locals> <Instr* instrs>`, list[Instr] newInstrs ) {
+  for ( i <- newInstrs ) {
+    if ( (FuncBody)`<Local* locals> <Instr* instrs>` := f ) {
+      f = (FuncBody)`<Local* locals> <Instr* instrs> <Instr i>`;
+    } else {
+      throw AssertionFailed( "Only syntax mismatched. Cannot happen." );
+    }
+  }
+  return f;
+}
+
 TypeUse addParams( t:(TypeUse)`<Param* ps> <Result* rs>`, [] ) = t; 
 TypeUse addParams( (TypeUse)`<Param* ps> <Result* rs>`, list[Param] params )
   = addParams( (TypeUse)`<Param* ps> <Param p> <Result* rs>`, tail( params ) )

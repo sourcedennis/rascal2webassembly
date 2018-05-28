@@ -11,7 +11,7 @@ syntax StringElem = StringChar
                   | "\\" HexDigit HexDigit
                   ;
 
-syntax StringChar = [ \u0020-\uD7FF \uE000-\u10FFFF ] - [ \" \\ \u007F ]
+syntax StringChar = [ \u0020-\uD7FF \uE000-\U10FFFF ] - [ \" \\ \u007F ]
                   | "\\" EscapableChar
                   | HexEscape
                   ;

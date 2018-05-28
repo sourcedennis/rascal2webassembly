@@ -53,85 +53,174 @@ Maybe[config] reduce( config( store, thread( [ *S, sev( val ) ], [ sei( set_glob
 // load
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i32_load( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i32( v ) ) ], I ) ) )
-  when v := intLE( getMemoryBytes( store, location + offset, 4 ) );
+  when hasMemoryBytes( store, location + offset, 4 ),
+       v := intLE( getMemoryBytes( store, location + offset, 4 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i32_load( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i64( v ) ) ], I ) ) )
-  when v := intLE( getMemoryBytes( store, location + offset, 8 ) );
+  when hasMemoryBytes( store, location + offset, 8 ),
+       v := intLE( getMemoryBytes( store, location + offset, 8 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( f32_load( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( f32( v ) ) ], I ) ) )
-  when v := toFloat( getMemoryBytes( store, location + offset, 4 ) );
+  when hasMemoryBytes( store, location + offset, 4 ),
+       v := toFloat( getMemoryBytes( store, location + offset, 4 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( f32_load( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( f64_load( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( f64( v ) ) ], I ) ) )
-  when v := toFloat( getMemoryBytes( store, location + offset, 8 ) );
+  when hasMemoryBytes( store, location + offset, 8 ),
+       v := toFloat( getMemoryBytes( store, location + offset, 8 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( f64_load( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // load8_u > i32
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i32_load8_u( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i32( v ) ) ], I ) ) )
-  when v := intLE( getMemoryBytes( store, location + offset, 1 ) );
+  when hasMemoryBytes( store, location + offset, 1 ),
+       v := intLE( getMemoryBytes( store, location + offset, 1 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i32_load8_u( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // load8_s > i32
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i32_load8_s( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i32( v32 ) ) ], I ) ) )
-  when v8 := intLE( getMemoryBytes( store, location + offset, 1 ) ),
+  when hasMemoryBytes( store, location + offset, 1 ),
+       v8 := intLE( getMemoryBytes( store, location + offset, 1 ) ),
        v32 := invSigned( 32, signed( 8, v8 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i32_load8_s( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // load8_u > i64
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load8_u( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i64( v ) ) ], I ) ) )
-  when v := intLE( getMemoryBytes( store, location + offset, 1 ) );
+  when hasMemoryBytes( store, location + offset, 1 ),
+       v := intLE( getMemoryBytes( store, location + offset, 1 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load8_u( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // load8_s > i64
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load8_s( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i64( v64 ) ) ], I ) ) )
-  when v8 := intLE( getMemoryBytes( store, location + offset, 1 ) ),
+  when hasMemoryBytes( store, location + offset, 1 ),
+       v8 := intLE( getMemoryBytes( store, location + offset, 1 ) ),
        v64 := invSigned( 64, signed( 8, v8 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load8_s( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // load16_u > i32
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i32_load16_u( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i32( v ) ) ], I ) ) )
-  when v := intLE( getMemoryBytes( store, location + offset, 2 ) );
+  when hasMemoryBytes( store, location + offset, 2 ),
+       v := intLE( getMemoryBytes( store, location + offset, 2 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i32_load16_u( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // load16_s > i32
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i32_load16_s( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i32( v32 ) ) ], I ) ) )
-  when v16 := intLE( getMemoryBytes( store, location + offset, 2 ) ),
+  when hasMemoryBytes( store, location + offset, 2 ),
+       v16 := intLE( getMemoryBytes( store, location + offset, 2 ) ),
        v32 := invSigned( 32, signed( 16, v16 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i32_load16_s( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // load16_u > i64
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load16_u( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i64( v ) ) ], I ) ) )
-  when v := intLE( getMemoryBytes( store, location + offset, 2 ) );
+  when hasMemoryBytes( store, location + offset, 2 ),
+       v := intLE( getMemoryBytes( store, location + offset, 2 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load16_u( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // load16_s > i64
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load16_s( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i64( v64 ) ) ], I ) ) )
-  when v16 := intLE( getMemoryBytes( store, location + offset, 2 ) ),
+  when hasMemoryBytes( store, location + offset, 2 ),
+       v16 := intLE( getMemoryBytes( store, location + offset, 2 ) ),
        v64 := invSigned( 64, signed( 16, v16 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load16_s( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // load32_u > i64
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load32_u( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i64( v ) ) ], I ) ) )
-  when v := intLE( getMemoryBytes( store, location + offset, 4 ) );
+  when hasMemoryBytes( store, location + offset, 4 ),
+       v := intLE( getMemoryBytes( store, location + offset, 4 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load32_u( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // load32_s > i64
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load32_s( offset, align ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i64( v64 ) ) ], I ) ) )
-  when v32 := intLE( getMemoryBytes( store, location + offset, 4 ) ),
+  when hasMemoryBytes( store, location + offset, 4 ),
+       v32 := intLE( getMemoryBytes( store, location + offset, 4 ) ),
        v64 := invSigned( 64, signed( 32, v32 ) );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ) ], [ sei( i64_load32_s( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // store
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i32( val ) ) ], [ sei( i32_store( offset, align ) ), *I ] ) ) )
-  = just( config( setMemoryBytes( store, location + offset, bytesLE( 4, val ) ), thread( S, I ) ) );
+  = just( config( setMemoryBytes( store, location + offset, bytesLE( 4, val ) ), thread( S, I ) ) )
+  when hasMemoryBytes( store, location + offset, 4 );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i32( val ) ) ], [ sei( i32_store( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i64( val ) ) ], [ sei( i64_store( offset, align ) ), *I ] ) ) )
-  = just( config( setMemoryBytes( store, location + offset, bytesLE( 8, val ) ), thread( S, I ) ) );
+  = just( config( setMemoryBytes( store, location + offset, bytesLE( 8, val ) ), thread( S, I ) ) )
+  when hasMemoryBytes( store, location + offset, 8 );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i64( val ) ) ], [ sei( i64_store( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( f32( val ) ) ], [ sei( f32_store( offset, align ) ), *I ] ) ) )
-  = just( config( setMemoryBytes( store, location + offset, toBytes( 4, val ) ), thread( S, I ) ) );
+  = just( config( setMemoryBytes( store, location + offset, toBytes( 4, val ) ), thread( S, I ) ) )
+  when hasMemoryBytes( store, location + offset, 4 );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( f32( val ) ) ], [ sei( f32_store( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( f64( val ) ) ], [ sei( f64_store( offset, align ) ), *I ] ) ) )
-  = just( config( setMemoryBytes( store, location + offset, toBytes( 8, val ) ), thread( S, I ) ) );
+  = just( config( setMemoryBytes( store, location + offset, toBytes( 8, val ) ), thread( S, I ) ) )
+  when hasMemoryBytes( store, location + offset, 8 );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( f64( val ) ) ], [ sei( f64_store( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // i32 > store8
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i32( val ) ) ], [ sei( i32_store8( offset, align ) ), *I ] ) ) )
-  = just( config( setMemoryBytes( store, location + offset, bytesLE( 4, val )[0..1] ), thread( S, I ) ) );
+  = just( config( setMemoryBytes( store, location + offset, bytesLE( 4, val )[0..1] ), thread( S, I ) ) )
+  when hasMemoryBytes( store, location + offset, 1 );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i32( val ) ) ], [ sei( i32_store8( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+
 // i32 > store16
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i32( val ) ) ], [ sei( i32_store16( offset, align ) ), *I ] ) ) )
-  = just( config( setMemoryBytes( store, location + offset, bytesLE( 4, val )[0..2] ), thread( S, I ) ) );
+  = just( config( setMemoryBytes( store, location + offset, bytesLE( 4, val )[0..2] ), thread( S, I ) ) )
+  when hasMemoryBytes( store, location + offset, 2 );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i32( val ) ) ], [ sei( i32_store16( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+
 // i64 > store8
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i64( val ) ) ], [ sei( i64_store8( offset, align ) ), *I ] ) ) )
-  = just( config( setMemoryBytes( store, location + offset, bytesLE( 8, val )[0..1] ), thread( S, I ) ) );
+  = just( config( setMemoryBytes( store, location + offset, bytesLE( 8, val )[0..1] ), thread( S, I ) ) )
+  when hasMemoryBytes( store, location + offset, 1 );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i64( val ) ) ], [ sei( i64_store8( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // i64 > store16
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i64( val ) ) ], [ sei( i64_store16( offset, align ) ), *I ] ) ) )
-  = just( config( setMemoryBytes( store, location + offset, bytesLE( 8, val )[0..2] ), thread( S, I ) ) );
+  = just( config( setMemoryBytes( store, location + offset, bytesLE( 8, val )[0..2] ), thread( S, I ) ) )
+  when hasMemoryBytes( store, location + offset, 2 );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i64( val ) ) ], [ sei( i64_store16( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // i64 > store32
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i64( val ) ) ], [ sei( i64_store32( offset, align ) ), *I ] ) ) )
-  = just( config( setMemoryBytes( store, location + offset, bytesLE( 8, val )[0..4] ), thread( S, I ) ) );
+  = just( config( setMemoryBytes( store, location + offset, bytesLE( 8, val )[0..4] ), thread( S, I ) ) )
+  when hasMemoryBytes( store, location + offset, 4 );
+Maybe[config] reduce( config( store, thread( [ *S, sev( i32( location ) ), sev( i64( val ) ) ], [ sei( i64_store32( offset, align ) ), *I ] ) ) )
+  = just( config( store, thread( [], [ sec( trap( ) ) ] ) ) );
+  
 // memory_size
 Maybe[config] reduce( config( store, thread( S, [ sei( memory_size( ) ), *I ] ) ) )
   = just( config( store, thread( [ *S, sev( i32( memorySize( store ) ) ) ], I ) ) );
@@ -140,6 +229,6 @@ Maybe[config] reduce( config( store, thread( [ *S, sev( i32( numPages ) ) ], [ s
   = just( config( newStore, thread( [ *S, sev( i32( memorySize( store ) ) ) ], I ) ) )
   when just( newStore ) := memoryGrow( store, numPages );
 Maybe[config] reduce( config( store, thread( [ *S, sev( i32( numPages ) ) ], [ sei( memory_grow( ) ), *I ] ) ) )
-  = just( config( store, thread( [ *S, sev( i32( -1 ) ) ], I ) ) );
+  = just( config( store, thread( [ *S, sev( i32( invSigned( 32, -1 ) ) ) ], I ) ) );
 
 default Maybe[config] reduce( config c ) = nothing( );
