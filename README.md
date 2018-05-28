@@ -6,10 +6,6 @@ A WebAssembly API written in Rascal MPL.
 ### Setup test suite
 Pull the test suite from the repo at <https://github.com/WebAssembly/testsuite>. The WebAssembly files in this repo seem to be using a different syntax for the memory grow and size instructions, than the syntax specification is. For now, change all occurrences of `grow_memory` to `memory.grow`, and all occurrences of `current_memory` to `memory.size`.
 
-There is some discussion regarding these changes to the instruction syntax in the WebAssembly spec repo. This will be properly updated in this repository later.
-
-Note that only 70 out of 72 can be properly parsed, as there currently are some issues w.r.t. proper Unicode parsing.
-
 ## WebAssembly
 See <https://github.com/webassembly>
 
@@ -21,10 +17,10 @@ See <https://github.com/usethesource/rascal>
 
 ## Features
 Implemented features are prefixed with a :heavy_check_mark:.
-* Concrete Syntax Grammar
-* Abstract Syntax ADT
-* WebAssembly validator
-* Transpiler from Pico to WASM
+* :heavy_check_mark: Concrete Syntax Grammar
+* :heavy_check_mark: Abstract Syntax ADT
+* :heavy_check_mark: Transpiler from Pico to WASM
+* :x: - WebAssembly validator - Abandoned
 
 ## References
 
