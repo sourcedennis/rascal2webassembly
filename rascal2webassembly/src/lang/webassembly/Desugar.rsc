@@ -1,10 +1,11 @@
 module lang::webassembly::Desugar
 
 import lang::webassembly::Syntax;
+import lang::webassembly::util::String2UTF8;
+
 import ParseTree;
 import List;
 import util::Math;
-import lang::webassembly::String2UTF8;
 
 // Many of the desugaring clauses cannot be resolved with the visit structure
 //   as in many cases a sub-ADT has to be replaced by a sub-ADT of a different

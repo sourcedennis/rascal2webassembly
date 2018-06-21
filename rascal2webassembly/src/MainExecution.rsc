@@ -1,4 +1,4 @@
-module MainTestSuite
+module MainExecution
 
 import lang::webassembly::Syntax;
 import lang::webassembly::Desugar;

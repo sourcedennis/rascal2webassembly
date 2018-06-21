@@ -1,4 +1,4 @@
-module lang::webassembly::StringSyntax
+module lang::webassembly::util::StringSyntax
 
 // By the WebAssembly spec, strings are lexical entities
 // However, they need to be converted to UTF-8 byte sequences

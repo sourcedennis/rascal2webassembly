@@ -25,7 +25,7 @@ import IO; // temp
  *   UINT8[] data
  *
  *
- * Analogous implementation in pseudo-C:
+ * Analogous implementation in pseudo-C (of malloc):
  * 
  * uint8* memory; // all memory here
  * 
@@ -57,16 +57,18 @@ import IO; // temp
  * ### concat
  * uint32 concat( uint32 str1, uint32 str2 ) {
  *   uint32 dst = malloc( strlen( str1 ) + strlen( str2 ) + 1 );
+ *   uint32 dstIt = dst;
  *   while ( mem[ str1 ] != 0 ) {
- *     mem[ dst ] = mem[ str1 ];
+ *     mem[ dstIt ] = mem[ str1 ];
  *     src1++;
- *     dst++;
+ *     dstIt++;
  *   }
  *   while ( mem[ str2 ] != 0 ) {
- *     mem[ dst ] = mem[ str2 ];
+ *     mem[ dstIt ] = mem[ str2 ];
  *     src2++;
- *     dst++;
+ *     dstIt++;
  *   }
+ *   mem[ dstIt ] = 0;
  *   return dst;
  * }
  */

@@ -1,4 +1,4 @@
-module lang::webassembly::ToInt
+module lang::webassembly::util::ToInt
 
 import String;
 

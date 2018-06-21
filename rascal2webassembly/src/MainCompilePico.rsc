@@ -1,4 +1,4 @@
-module MainCompile
+module MainCompilePico
 
 import lang::pico2wasm::Pico2Wasm;
 import demo::lang::Pico::Syntax;
@@ -20,7 +20,7 @@ import ParseTree;
 //   performing a reduction step.
 
 void main( ) {
-  tree = parse( #start[Program], |project://pico/concat.pico| );
+  tree = parse( #start[Program], |project://pico/add.pico| );
   PROGRAM picoAdt = implode( #PROGRAM, tree );
   
   MODULE modBase = pico2wasm( picoAdt );

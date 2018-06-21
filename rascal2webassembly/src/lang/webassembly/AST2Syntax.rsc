@@ -2,7 +2,7 @@ module lang::webassembly::AST2Syntax
 
 import lang::webassembly::Syntax;
 import lang::webassembly::Abstract;
-import lang::webassembly::String2UTF8;
+import lang::webassembly::util::String2UTF8;
 import util::Float;
 
 import IO; // temp

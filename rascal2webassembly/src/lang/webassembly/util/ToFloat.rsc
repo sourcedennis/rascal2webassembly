@@ -1,12 +1,12 @@
-module lang::webassembly::ToFloat
+module lang::webassembly::util::ToFloat
 
 import ParseTree;
 import String;
 import util::Math;
 
-import lang::webassembly::FloatSyntax;
+import lang::webassembly::util::FloatSyntax;
+import lang::webassembly::util::ToInt;
 import util::Float;
-import lang::webassembly::ToInt;
 
 // This converts from WebAssembly's float syntax to
 //   the floating point implementation

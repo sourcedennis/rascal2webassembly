@@ -1,4 +1,4 @@
-module lang::webassembly::FloatSyntax
+module lang::webassembly::util::FloatSyntax
 
 // By the WebAssembly spec, floats are lexical entities
 // However, they need to be converted to Rascal reals. Though not all

@@ -7,10 +7,10 @@ import ParseTree;
 
 import lang::webassembly::Abstract;
 import lang::webassembly::Syntax;
-import lang::webassembly::String2UTF8;
+import lang::webassembly::util::String2UTF8;
 import lang::webassembly::execution::Numerics; // for invSigned( )
-import lang::webassembly::ToFloat;
-import lang::webassembly::ToInt;
+import lang::webassembly::util::ToFloat;
+import lang::webassembly::util::ToInt;
 
 MODULE toAST( (start[WebAssembly])`<Module m>` ) = toAST( m );
 

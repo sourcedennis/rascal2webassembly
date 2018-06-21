@@ -8,7 +8,7 @@ import lang::webassembly::Syntax2AST;
 import lang::webassembly::script::ScriptAbstract;
 import lang::webassembly::script::ScriptSyntax;
 import lang::webassembly::execution::Numerics; // for invSigned( )
-import lang::webassembly::ToFloat;
+import lang::webassembly::util::ToFloat;
 import util::Float;
 
 WASM_SCRIPT toAST( start[WebAssemblyScript] script ) {

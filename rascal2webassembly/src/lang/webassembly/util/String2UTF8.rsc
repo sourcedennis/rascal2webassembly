@@ -1,10 +1,8 @@
-module lang::webassembly::String2UTF8
+module lang::webassembly::util::String2UTF8
 
 import ParseTree;
-import lang::webassembly::StringSyntax;
+import lang::webassembly::util::StringSyntax;
 import String;
-
-import IO; // temp
 
 // By the WebAssembly spec, strings are lexical entities
 // However, they need to be converted to UTF-8 byte sequences
