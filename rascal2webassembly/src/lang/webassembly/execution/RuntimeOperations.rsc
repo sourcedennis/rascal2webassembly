@@ -7,7 +7,7 @@ import List;
 import IO; // temp
 
 import lang::webassembly::execution::RuntimeStructures;
-import lang::webassembly::ADT;
+import lang::webassembly::Abstract;
 import util::LittleEndian;
 import util::Float;
 

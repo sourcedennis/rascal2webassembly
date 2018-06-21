@@ -3,7 +3,7 @@ module MainCompile
 import lang::pico2wasm::Pico2Wasm;
 import demo::lang::Pico::Syntax;
 import demo::lang::Pico::Abstract;
-import lang::webassembly::ADT;
+import lang::webassembly::Abstract;
 import HelpersWasm;
 import IO;
 
@@ -18,11 +18,9 @@ import ParseTree;
 // The resulting WebAssembly program will be run, outputting
 //   the intermediate stack and instruction state after
 //   performing a reduction step.
-//
-// TODO: Convert the generated WASM ADT into the concrete syntax
 
 void main( ) {
-  tree = parse( #start[Program], |project://pico/add.pico| );
+  tree = parse( #start[Program], |project://pico/concat.pico| );
   PROGRAM picoAdt = implode( #PROGRAM, tree );
   
   MODULE modBase = pico2wasm( picoAdt );
@@ -46,7 +44,7 @@ void main( ) {
     c = c2;
     
     println( "Stack: <stack2str( c.t.stack )>" );
-    println( "Instructions: <c.t.instructions>" );
+    println( "Instructions: <instrs2str(c.t.instructions)>" );
     println( );
   }
 }

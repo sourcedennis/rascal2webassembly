@@ -4,6 +4,13 @@ import ParseTree;
 import lang::webassembly::StringSyntax;
 import String;
 
+import IO; // temp
+
+// By the WebAssembly spec, strings are lexical entities
+// However, they need to be converted to UTF-8 byte sequences
+// for their binary representation in the ADT. To facilitate this
+// conversion these functions are introduced.
+
 public alias byte = int;
 public list[byte] wasmStringToUTF8Bytes( str s ) {
   String tree = parse( #String, s );
@@ -14,6 +21,25 @@ public list[byte] wasmStringToUTF8Bytes( str s ) {
   }
   }
   return utf8Bytes;
+}
+
+// Note that unicode characters are not preserved, instead they are
+//   replaced by their binary (hexadecimal) representation
+//   as within the binary representation the initial format is lost
+//   This representation is binary equivalent, though.
+public str bytesToWasmString( list[byte] bs ) {
+  str s = "";
+  for ( b <- bs ) {
+    if ( b == 0x22 ) { // double quote
+      s += "\\\"";
+    } else if ( b >= 0x20 && b < 0x7E ) {
+      // printable ascii character
+      s += fromPayloadChar( stringChar( b ) );
+    } else {
+      s += "\\" + toHex2( b );
+    }
+  }
+  return "\"<s>\"";
 }
 
 public int wasmStringUTF8Length( str s ) {
@@ -35,6 +61,18 @@ public str toPayload( str s ) {
   return payload;
 }
 
+public str fromPayload( str s ) {
+  str out = "";
+  for ( c <- chars( s ) ) {
+    if ( c < 0x20 || ( c >= 0x7F && c <= 0xFF ) ) {
+      out += "\\" + toHex2( c );
+    } else {
+      out += fromPayloadChar( stringChars( [ c ] ) );
+    }
+  }
+  return "\"<out>\"";
+}
+
 private list[byte] toUTF8Bytes( (StringElem)`\\t` ) = [ charAt( "\t", 0 ) ];
 private list[byte] toUTF8Bytes( (StringElem)`\\n` ) = [ charAt( "\n", 0 ) ];
 private list[byte] toUTF8Bytes( (StringElem)`\\r` ) = [ charAt( "\r", 0 ) ];
@@ -45,6 +83,29 @@ private list[byte] toUTF8Bytes( (StringElem)`<HexEscape e>` ) = unicodeCharToUTF
 private list[byte] toUTF8Bytes( (StringElem)`\\<HexDigit d1><HexDigit d2>` ) = [ toInt( "0x<d1><d2>" ) ];
 private default list[byte] toUTF8Bytes( StringElem e ) = unicodeCharToUTF8( charAt( "<e>", 0 ) );
 
+private str toHex2( int i ) {
+  int leastSignif = i % 0x10;
+  int mostSignif  = ( i / 0x10 ) % 0x10;
+  return "<toHexChar(mostSignif)><toHexChar(leastSignif)>";
+}
+
+private str toHexChar( int i ) {
+  assert i >= 0 && i < 0x10;
+  
+  if ( i <= 0x9 ) {
+    return "<i>";
+  } else {
+    switch ( i ) {
+    case 0xA: return "A";
+    case 0xB: return "B";
+    case 0xC: return "C";
+    case 0xD: return "D";
+    case 0xE: return "E";
+    case 0xF: return "F";
+    }
+  }
+}
+
 private str toPayload( (StringElem)`\\t` ) = "\t";
 private str toPayload( (StringElem)`\\n` ) = "\n";
 private str toPayload( (StringElem)`\\r` ) = "\r";
@@ -54,6 +115,14 @@ private str toPayload( (StringElem)`\\\\` ) = "\\";
 private str toPayload( (StringElem)`<HexEscape e>` ) = stringChars( [ hex2int( substring( "<e>", 2 ) ) ] );
 private str toPayload( (StringElem)`\\<HexDigit d1><HexDigit d2>` ) = stringChars( [ toInt( "0x<d1><d2>" ) ] );
 private default str toPayload( StringElem e ) = "<e>";
+
+private str fromPayloadChar( "\t" ) = "\\t";
+private str fromPayloadChar( "\n" ) = "\\n";
+private str fromPayloadChar( "\r" ) = "\\r";
+private str fromPayloadChar( "\"" ) = "\\\"";
+private str fromPayloadChar( "\'" ) = "\\\'";
+private str fromPayloadChar( "\\" ) = "\\\\";
+private default str fromPayloadChar( str s ) = s;
 
 private list[byte] unicodeCharToUTF8( int unicode ) {
   // Right binary shift is not implemented

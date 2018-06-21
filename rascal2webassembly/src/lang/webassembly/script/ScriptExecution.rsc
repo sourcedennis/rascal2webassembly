@@ -5,7 +5,7 @@ import util::Math;
 import List;
 // import IO; // temp
 
-import lang::webassembly::script::ScriptADT;
+import lang::webassembly::script::ScriptAbstract;
 import lang::webassembly::execution::RuntimeStructures;
 import lang::webassembly::execution::RuntimeOperations;
 import lang::webassembly::execution::Reduction;

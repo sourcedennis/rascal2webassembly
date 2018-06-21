@@ -212,7 +212,7 @@ syntax TypeUse = "(" "type" TypeIdx ")" Param* Result*
 
 syntax Import = "(" "import" Name Name ImportDesc ")";
 
-syntax ImportDesc = "(" "func" Id? TypeUse ")" // TODO: Check TypeUse
+syntax ImportDesc = "(" "func" Id? TypeUse ")"
                   | "(" "table" Id? TableType ")"
                   | "(" "memory" Id? MemType ")"
                   | "(" "global" Id? GlobalType ")"
@@ -224,10 +224,10 @@ syntax Func = "(" "func" Id? FuncFields ")";
 
 syntax FuncFields = InlineExport FuncFields
                   | InlineImport TypeUse
-                  | TypeUse FuncFieldsBody
+                  | TypeUse FuncBody
                   ;
 
-syntax FuncFieldsBody = FuncBody;
+//syntax FuncFieldsBody = FuncBody;
 
 syntax FuncBody = Local* Instr*;
 

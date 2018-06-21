@@ -1,6 +1,6 @@
 module lang::webassembly::execution::RuntimeStructures
 
-import lang::webassembly::ADT;
+import lang::webassembly::Abstract;
 import lang::webassembly::execution::Numerics;
 import util::Float;
 

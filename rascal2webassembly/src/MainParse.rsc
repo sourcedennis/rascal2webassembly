@@ -2,11 +2,11 @@ module MainParse
 
 import lang::webassembly::Syntax;
 import lang::webassembly::Desugar;
-import lang::webassembly::ScriptConvertADT;
-import lang::webassembly::ScriptSyntax;
+import lang::webassembly::script::ScriptSyntax2AST;
+import lang::webassembly::script::ScriptSyntax;
 import lang::webassembly::script::ScriptExecution;
+import HelpersWasm;
 
-import Helpers;
 import IO;
 import util::FileSystem;
 import ParseTree;

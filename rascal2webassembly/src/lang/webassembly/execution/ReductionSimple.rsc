@@ -6,7 +6,7 @@ import List;
 import lang::webassembly::execution::Numerics;
 import lang::webassembly::execution::RuntimeStructures;
 import lang::webassembly::execution::RuntimeOperations;
-import lang::webassembly::ADT;
+import lang::webassembly::Abstract;
 import util::Float;
 import util::Math;
 import util::LittleEndian;

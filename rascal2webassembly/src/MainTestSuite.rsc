@@ -2,7 +2,7 @@ module MainTestSuite
 
 import lang::webassembly::Syntax;
 import lang::webassembly::Desugar;
-import lang::webassembly::script::ScriptConvertADT;
+import lang::webassembly::script::ScriptSyntax2AST;
 import lang::webassembly::script::ScriptSyntax;
 import lang::webassembly::script::ScriptExecution;
 
@@ -27,14 +27,17 @@ void main( ) {
     
     try {
       scriptTree = desugar( parse( #start[WebAssemblyScript], f ) );
-      <numAssertions, failedAssertions> = runScript( toADT( scriptTree ) );
+      ast = toAST( scriptTree );
+      <numAssertions, failedAssertions> = runScript( ast );
       
       totalNumAssertions += numAssertions;
       totalNumAssertionsFailed += size( failedAssertions );
       
-      println( "<numAssertions-size(failedAssertions)>/<numAssertions> Successful assertions" );
-      for ( c <- failedAssertions ) {
-        println( c );
+      if ( size( failedAssertions ) > 0 ) {
+        println( "<numAssertions-size(failedAssertions)>/<numAssertions> Successful assertions" );
+        /*for ( c <- failedAssertions ) {
+          println( c );
+        }*/
       }
     //} catch e:StackOverflow( ): {
       //println( "StackOverflow" );

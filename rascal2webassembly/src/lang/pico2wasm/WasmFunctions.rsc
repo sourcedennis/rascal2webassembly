@@ -1,8 +1,8 @@
 module lang::pico2wasm::WasmFunctions
 
 import lang::webassembly::Syntax;
-import lang::webassembly::ADT;
-import lang::webassembly::ConvertADT;
+import lang::webassembly::Abstract;
+import lang::webassembly::Syntax2AST;
 import lang::webassembly::Desugar;
 import ParseTree;
 import IO; // temp
@@ -213,4 +213,4 @@ private str baseModule = "(module
 public int FUNC_MALLOC_ID = 0;
 public int FUNC_STRLEN_ID = 1;
 public int FUNC_CONCAT_ID = 2;
-public MODULE nativeFunctionsModule = toADT( desugar( parse( #start[WebAssembly], baseModule ) ) );
+public MODULE nativeFunctionsModule = toAST( desugar( parse( #start[WebAssembly], baseModule ) ) );

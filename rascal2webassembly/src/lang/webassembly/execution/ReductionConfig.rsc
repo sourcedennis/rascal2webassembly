@@ -8,7 +8,7 @@ import util::Float;
 import lang::webassembly::execution::RuntimeStructures;
 import lang::webassembly::execution::RuntimeOperations;
 import lang::webassembly::execution::Numerics;
-import lang::webassembly::ADT;
+import lang::webassembly::Abstract;
 
 // Contains all reduction rules that need or modify the configuration
 

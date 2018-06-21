@@ -3,38 +3,80 @@ module EclipseSupport
 import ParseTree;
 import util::IDE;
 import IO;
+import Message;
 
 import lang::webassembly::Syntax;
-import lang::webassembly::ScriptSyntax;
-import Helpers;
+import lang::webassembly::AST2Syntax;
+import lang::webassembly::script::ScriptSyntax;
+import lang::webassembly::script::ScriptExecution;
+import lang::webassembly::script::ScriptAbstract;
+import lang::webassembly::script::ScriptSyntax2AST;
+import HelpersWasm;
+import HelpersPico;
+import lang::pico2wasm::Pico2Wasm;
 
-public void registerWebAssembly( ) {
-  clearLanguage( "webassembly" );
-  registerLanguage( "webassembly", "wast", parseWasmScript );
-  
-  // These don't work. Frankly, I'm not entirely sure what/when they would
-  registerContributions( "webassembly", { annotator( wasmAnnotator ), setupMenu( ) } );
+import demo::lang::Pico::Plugin;
+import demo::lang::Pico::Syntax;
+import demo::lang::Pico::Abstract;
+
+private str WASM_LANGUAGE = "webassembly";
+private str WASM_EXTENSION = "wat";
+
+private str WASM_SCRIPT_LANGUAGE = "webassembly-script";
+private str WASM_SCRIPT_EXTENSION = "wast";
+
+// temp
+public void go( ) {
+  l = |project://pico/concat.pico|;
+  program = parsePico( l );
+  compilePico( program, l );
 }
 
-private WebAssemblyScript wasmAnnotator( WebAssemblyScript s )
-  = visit( s ) {
-  case Func f: {
-    println( "Annotate" );
-    println( f );
-    f@doc = "bob";
-    //f@link = |project://testsuite/address.wast|;
-    //f@foldable = true;
-    insert f;
-  }
-  };
+public void registerWebAssembly( ) {
+  registerLanguage( WASM_SCRIPT_LANGUAGE, WASM_SCRIPT_EXTENSION, parseWasmScript );
+  registerLanguage( WASM_LANGUAGE, WASM_EXTENSION, parseWasm );
+  
+  registerContributions( WASM_SCRIPT_LANGUAGE, {
+    popup( menu( "WebAssembly",
+      [ action( "Run", void ( start[WebAssemblyScript] t, loc s ) { runScript( t, s ); } ) ] ) )
+    }
+  );
+  
+  registerPico();
+  registerContributions( "Pico", {
+    popup( menu( "WebAssembly",
+      [ action( "Convert", void ( Program t, loc s ) { compilePico( t, s ); } ) ] ) )
+    }
+  );
+}
 
-public Contribution setupMenu( )
-  = popup(menu("MyMenu", [action("Example item", void (Tree t, loc s) { println("<t> @ <s>");})]));
-
-// Does not work either
-public void setupConsole( ) {
-  str newLineCallback( str s ) {
-    return "Yes";
+private void runScript( start[WebAssemblyScript] t, loc s ) {
+  try {
+    println( "Running" );
+    start[WebAssemblyScript] desT = desugar( t );
+    WASM_SCRIPT adt = toAST( desT );
+    <numAssertions, failedAssertions> = runScript( adt );
+      
+    println( "<numAssertions-size(failedAssertions)>/<numAssertions> Successful assertions" );
+  
+    if ( size( failedAssertions ) > 0 ) {
+      println( "Failed assertions: " );
+      for ( c <- failedAssertions ) {
+        println( c );
+      }
+    }
+  } catch e: {
+    println( "Error" );
+    println( e );
   }
-  createConsole( "webassembly", "WASM\>", newLineCallback );
+}
+
+public void compilePico( Program t, loc l ) {
+  PROGRAM adt = toADT( t );
+  MODULE modBase = pico2wasm( adt );
+  start[WebAssembly] concrete = toConcrete( modBase );
+  
+  loc watLoc = |<l.scheme>://<l.authority><l.path>.wat|;
+  
+  writeFile( watLoc, "<concrete>" );
 }

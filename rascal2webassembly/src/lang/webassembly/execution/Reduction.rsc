@@ -4,7 +4,7 @@ import List;
 import Exception;
 import IO; // temp
 
-import lang::webassembly::ADT;
+import lang::webassembly::Abstract;
 import lang::webassembly::execution::RuntimeStructures;
 import lang::webassembly::execution::RuntimeOperations;
 import lang::webassembly::execution::ReductionConfig;

@@ -1,6 +1,6 @@
-module lang::webassembly::script::ScriptADT
+module lang::webassembly::script::ScriptAbstract
 
-extend lang::webassembly::ADT;
+extend lang::webassembly::Abstract;
 import util::Float;
 
 // This structure is not formally defined, instead it is used in the

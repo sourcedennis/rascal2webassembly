@@ -1,4 +1,4 @@
-module lang::webassembly::ADT
+module lang::webassembly::Abstract
 
 import util::Float;
 
