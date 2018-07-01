@@ -11,11 +11,13 @@ import util::Float;
 import util::Math;
 import util::LittleEndian;
 
+// INTERNAL MODULE
+//
+// see lang::webassembly::execution::Reduction
+//
 // Contains all reduction rules that only modify the stack and instructions, and none of the other
 //   properties of the context
 //
-// Public functions:
-// - Maybe[thread] reduce( thread )
 
 // Helpers
 public Maybe[thread] reduce( thread( Stack stack, list[instrelem] instructions ) ) = reduce( stack, instructions );

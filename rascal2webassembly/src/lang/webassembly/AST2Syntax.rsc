@@ -10,14 +10,20 @@ import List;
 import Map;
 import ParseTree;
 
+// Provides functions to convert a WebAssembly AST into its concrete
+// representation.
 //
-// $f[int] for function identifiers
-// $t[int] for type identifiers
-// $l[int] for labels
-// $v[int] for local variables and parameters
-// $m[int] for memories
-// $g[int] for globals
-// $b[int] for tables
+// Public function(s):
+//  - start[WebAssembly] toConcrete( MODULE m )
+//
+// The following naming conventions are used:
+//  - $f[int] for function identifiers
+//  - $t[int] for type identifiers
+//  - $l[int] for labels
+//  - $v[int] for local variables and parameters
+//  - $m[int] for memories
+//  - $g[int] for globals
+//  - $b[int] for tables
 //
 
 // No need to keep variableIds or functionIds in here, as their index directly

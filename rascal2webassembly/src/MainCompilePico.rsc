@@ -20,7 +20,7 @@ import ParseTree;
 //   performing a reduction step.
 
 void main( ) {
-  tree = parse( #start[Program], |project://pico/add.pico| );
+  tree = parse( #start[Program], |project://pico/factorial.pico| );
   PROGRAM picoAdt = implode( #PROGRAM, tree );
   
   MODULE modBase = pico2wasm( picoAdt );

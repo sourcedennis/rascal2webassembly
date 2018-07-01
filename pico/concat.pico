@@ -1,0 +1,7 @@
+begin declare input1 : string,
+              input2 : string,  
+              output : string;
+      input1 := "Hello";
+      input2 := "World";
+      output := input1 || input2
+end

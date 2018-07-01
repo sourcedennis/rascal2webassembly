@@ -35,12 +35,7 @@ void main( ) {
       
       if ( size( failedAssertions ) > 0 ) {
         println( "<numAssertions-size(failedAssertions)>/<numAssertions> Successful assertions" );
-        /*for ( c <- failedAssertions ) {
-          println( c );
-        }*/
       }
-    //} catch e:StackOverflow( ): {
-      //println( "StackOverflow" );
     }  catch ParseError(loc l): {
       println( "Parsing failed" );
     }

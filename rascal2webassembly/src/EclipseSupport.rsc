@@ -25,13 +25,6 @@ private str WASM_EXTENSION = "wat";
 private str WASM_SCRIPT_LANGUAGE = "webassembly-script";
 private str WASM_SCRIPT_EXTENSION = "wast";
 
-// temp
-public void go( ) {
-  l = |project://pico/concat.pico|;
-  program = parsePico( l );
-  compilePico( program, l );
-}
-
 public void registerWebAssembly( ) {
   registerLanguage( WASM_SCRIPT_LANGUAGE, WASM_SCRIPT_EXTENSION, parseWasmScript );
   registerLanguage( WASM_LANGUAGE, WASM_EXTENSION, parseWasm );
@@ -71,7 +64,7 @@ private void runScript( start[WebAssemblyScript] t, loc s ) {
   }
 }
 
-public void compilePico( Program t, loc l ) {
+private void compilePico( Program t, loc l ) {
   PROGRAM adt = toADT( t );
   MODULE modBase = pico2wasm( adt );
   start[WebAssembly] concrete = toConcrete( modBase );

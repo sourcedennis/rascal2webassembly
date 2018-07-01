@@ -131,6 +131,12 @@ tuple[map[str,int],bytes] getStrings( list[STATEMENT] stmts ) {
     }
   }
   
+  if ( size( strData ) == 4 ) {
+    // If the only memory is the initial length identifier
+    // there is no actual memory
+    return <(),[]>;
+  }
+  
   // Store memory size in bytes as little endian in the first 4 bytes
   strData[ 3 ] = ( size( strData ) / 0x1000000 ) % 0x100;
   strData[ 2 ] = ( size( strData ) / 0x10000 ) % 0x100;

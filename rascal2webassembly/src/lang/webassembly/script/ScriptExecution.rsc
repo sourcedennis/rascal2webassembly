@@ -3,7 +3,6 @@ module lang::webassembly::script::ScriptExecution
 import util::Maybe;
 import util::Math;
 import List;
-// import IO; // temp
 
 import lang::webassembly::script::ScriptAbstract;
 import lang::webassembly::execution::RuntimeStructures;
@@ -13,7 +12,6 @@ import util::Float;
 
 // Scripts are not executed using small-step. Instead, all assert rules are executed
 //   and the result will determine which ones failed. (For now)
-
 
 data FailedAssertion = FailedAssertion( ASSERTION a, Maybe[list[CONST]] actual );
 

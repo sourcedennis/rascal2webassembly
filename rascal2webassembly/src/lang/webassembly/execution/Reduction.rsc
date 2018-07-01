@@ -2,7 +2,6 @@ module lang::webassembly::execution::Reduction
 
 import List;
 import Exception;
-import IO; // temp
 
 import lang::webassembly::Abstract;
 import lang::webassembly::execution::RuntimeStructures;

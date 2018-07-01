@@ -78,7 +78,7 @@ data frame = frame( list[runtime_val] locals, moduleinst \module );
 
 alias Stack = list[stackelem];
 
-// Deviation from format spec. This is more practical
+// Deviation from format spec to account for the explicit stack.
 data thread = thread( Stack stack, list[instrelem] instructions );
 
 data config = config( store s, thread t );

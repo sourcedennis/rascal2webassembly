@@ -1,6 +1,10 @@
 module lang::webassembly::execution::Numerics
 
-import IO; // temp
+// INTERNAL MODULE
+//
+// Implements the numerics as defined in "4.3 Numerics"
+// Floating point operations are defined in util::Float
+
 import List;
 import util::IntPower;
 import Exception;
@@ -109,9 +113,6 @@ public bits ibits( int N:0, UInt a ) = [];
 public bits ibits( int N, UInt a ) = ibits( N - 1, a / 2 ) + [ a % 2 ];
 public UInt invIbits( bits _:[] ) = 0;
 public UInt invIbits( bits _:[*bs, bit b] ) = invIbits( bs ) * 2 + b;
-
-// ## Floating Points
-// Most of these are moved to util::Float
 
 // ## Helpers
 

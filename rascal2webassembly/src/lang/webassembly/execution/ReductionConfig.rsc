@@ -10,6 +10,10 @@ import lang::webassembly::execution::RuntimeOperations;
 import lang::webassembly::execution::Numerics;
 import lang::webassembly::Abstract;
 
+// INTERNAL MODULE
+//
+// see lang::webassembly::execution::Reduction
+//
 // Contains all reduction rules that need or modify the configuration
 
 // call_indirect

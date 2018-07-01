@@ -1,5 +1,9 @@
 module lang::webassembly::Syntax
 
+//
+// The concrete syntax of a WebAssembly 1.0 module
+//
+
 layout Layout = Space* !>> " " !>> [\t\n\r] !>> ";;" !>> "(;";
 
 // ### Syntax Format ###

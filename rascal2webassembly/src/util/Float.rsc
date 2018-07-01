@@ -1,11 +1,9 @@
 module util::Float
 
-//import lang::webassembly::FloatSyntax;
 import ParseTree;
 import Exception;
 import String;
 import util::Math;
-import IO; // temp
 import util::Maybe;
 
 import util::LittleEndian;

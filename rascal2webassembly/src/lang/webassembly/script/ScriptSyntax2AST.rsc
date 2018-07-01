@@ -11,6 +11,14 @@ import lang::webassembly::execution::Numerics; // for invSigned( )
 import lang::webassembly::util::ToFloat;
 import util::Float;
 
+//
+// Converts from the concrete representation of a WebAssembly into its abstract syntax.
+//
+// Some assertion rules are ignored and not placed in the abstract syntax, as their
+// execution is not important anyway; as the script syntax is not part of the formal
+// specification, and only used to test the implementation of the specification.
+//
+
 WASM_SCRIPT toAST( start[WebAssemblyScript] script ) {
   list[WASM_SCRIPT_ENTRY] entries = [];
   

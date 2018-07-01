@@ -2,6 +2,22 @@ module lang::webassembly::Abstract
 
 import util::Float;
 
+//
+// The abstract syntax for a WebAssembly 1.0 module
+//
+// TODO:
+//  - Use IEEE 754-2008 floating points
+//
+// Considerations:
+//  - Unicode normalisation:
+//    The AST contains external identifiers as Rascal strings.
+//    Rascal strings are normalised w.r.t. Unicode. Therefore  canonical unicode
+//    equivalence is used for comparison; Whereas WebAssembly demands binary
+//    equivalance. So a binary representation would be better for full correctness.
+//    Though, the string representation accounts for the significant majority of
+//    the cases and keeps everything more readable. So strings are used, for now.
+//
+
 data MODULE = \module( list[FUNCTYPE] types,
                        list[FUNC] funcs,
                        list[TABLE] tables,
