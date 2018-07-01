@@ -3,6 +3,8 @@ A WebAssembly API written in Rascal MPL.
 
 ## Setup
 
+To be able to run the API, it should be setup within the Eclipse IDE (<http://www.eclipse.org>). These instructions describe how to do this.
+
 ### Setup test suite
 Pull the test suite from the repo at <https://github.com/WebAssembly/testsuite>. The WebAssembly files in this repo seem to be using a different syntax for the memory grow and size instructions, than the syntax specification is. For now, change all occurrences of `grow_memory` to `memory.grow`, and all occurrences of `current_memory` to `memory.size`. This test suite should be setup as an Eclipse project with the name `testsuite` to be able to run the test files.
 
