@@ -91,7 +91,7 @@ private START toAST( IdContext ctx, (Start)`(start <FuncIdx idx>)` ) = \start( g
 private IMPORT toAST( IdContext ctx, (Import)`(import <Name modName> <Name importName> <ImportDesc desc>)` )
   = \import( toAST( modName ), toAST( importName ), toAST( ctx, desc ) );
 
-private str toAST( Name n ) = toPayload( "<n>" );
+public str toAST( Name n ) = toPayload( "<n>" );
 
 private IMPORTDESC toAST( IdContext ctx, (ImportDesc)`(func <Id? id> (type <TypeIdx idx>) <Param* ps> <Result* rs>)` ) = importdesc_func( getIndex( ctx, idx ) );
 private IMPORTDESC toAST( IdContext ctx, (ImportDesc)`(table <Id? id> <TableType t>)` ) = importdesc_table( toAST( t ) );
